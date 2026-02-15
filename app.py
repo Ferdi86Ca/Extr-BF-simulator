@@ -97,9 +97,9 @@ col_a, col_b = st.columns(2)
 with col_a:
     ca = st.number_input(f"{t['capex']} A", value=int(1500000*cambio)) / cambio
     pa = st.number_input(f"{t['output']} A", value=400)
-    sa = st.number_input(f"{t['precision']} A", value=4.5)
-    oa = st.number_input(f"{t['oee']} A", value=75.0)
-    scra = st.number_input(f"{t['scrap']} A", value=4.0)
+    sa = st.number_input(f"{t['precision']} A", value=3.5)
+    oa = st.number_input(f"{t['oee']} A", value=80.0)
+    scra = st.number_input(f"{t['scrap']} A", value=3.0)
     ma = 3.5; csa = 0.40
 
 with col_b:
@@ -158,3 +158,4 @@ fig = go.Figure()
 fig.add_trace(go.Scatter(x=yrs, y=fa, name=t['line_a'], line=dict(color='gray', dash='dot')))
 fig.add_trace(go.Scatter(x=yrs, y=fb, name=t['line_b'], line=dict(color='#00CC96', width=4)))
 st.plotly_chart(fig, use_container_width=True)
+
