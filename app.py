@@ -16,19 +16,18 @@ lang_dict = {
         "line_b": "Line B (Premium)",
         "capex": "Investment (€)",
         "output": "Output (kg/h)",
-        "cons": "Cons. (kWh/kg)",
-        "precision": "2σ Prec. (±%)",
+        "cons": "Consumption (kWh/kg)",
+        "precision": "2σ Precision (±%)",
         "maint": "Maint. (%)",
-        "oee": "OEE (%)",
-        "scrap": "Scrap (%)",
-        "res_title": "🏁 ROI & TCO Analysis",
-        "tech_comp": "📊 Comparative Analysis",
+        "oee": "OEE Efficiency (%)",
+        "scrap": "Scrap Rate (%)",
+        "res_title": "🏁 ROI Analysis Results",
+        "tech_comp": "📊 Comparative Performance Table",
         "extra_margin": "Extra Annual Margin",
-        "payback": "Break-even (Years)",
+        "payback": "Payback (Years)",
         "cost_kg": "Prod. Cost per KG",
         "profit_5y": "Extra Profit (5y)",
-        "tco_title": "TCO 10 Years (€)",
-        "info_msg": "💡 Line B saves {:.3f} €/kg. 5y Extra Profit: € {:,.0f}",
+        "info_msg": "💡 Line B reduces cost per KG by € {:.3f}. Extra profit in 5 years: € {:,.0f}",
         "download_btn": "📩 Download Report"
     },
     "Italiano": {
@@ -46,16 +45,15 @@ lang_dict = {
         "cons": "Consumo (kWh/kg)",
         "precision": "Precisione 2σ (±%)",
         "maint": "Manutenzione (%)",
-        "oee": "OEE (%)",
-        "scrap": "Scarto (%)",
-        "res_title": "🏁 Analisi ROI & TCO",
-        "tech_comp": "📊 Analisi Comparativa",
+        "oee": "OEE - Efficienza (%)",
+        "scrap": "Percentuale Scarto (%)",
+        "res_title": "🏁 Risultati Analisi ROI",
+        "tech_comp": "📊 Tabella Comparativa Prestazioni",
         "extra_margin": "Extra Margine Annuo",
         "payback": "Pareggio (Anni)",
         "cost_kg": "Costo al KG",
         "profit_5y": "Extra Profitto (5 anni)",
-        "tco_title": "TCO 10 Anni (€)",
-        "info_msg": "💡 Linea B risparmia {:.3f} €/kg. Extra Profitto 5a: € {:,.0f}",
+        "info_msg": "💡 La Linea B riduce il costo al KG di € {:.3f}. Extra profitto in 5 anni: € {:,.0f}",
         "download_btn": "📩 Scarica Report"
     }
 }
@@ -121,7 +119,7 @@ dmarg = margb - marga
 pbk = (cb - ca) / dmarg if dmarg > 0 else 0
 p5y = (dmarg * 5) - (cb - ca)
 
-# --- TABELLA COMPARATIVA ---
+# --- TABELLA COMPARATIVA POTENZIATA ---
 st.markdown("---")
 st.subheader(t['tech_comp'])
 
@@ -129,14 +127,14 @@ data = {
     "Parameter": [t['capex'], t['output'], t['oee'], t['scrap'], t['cons'], t['cost_kg'], "Annual Margin"],
     t['line_a']: [f"€ {ca:,.0f}", f"{pa} kg/h", f"{oa}%", f"{scra}%", f"{csa} kWh/kg", f"€ {ckga:.3f}", f"€ {marga:,.0f}"],
     t['line_b']: [f"€ {cb:,.0f}", f"{pb} kg/h", f"{ob}%", f"{scrb}%", f"{csb} kWh/kg", f"€ {ckgb:.3f}", f"€ {margb:,.0f}"],
-    "Difference (B-A)": [
-        f"€ {cb-ca:,.0f}", 
-        f"+{pb-pa} kg/h", 
-        f"+{ob-oa}%", 
-        f"{scrb-scra}%", 
-        f"{csb-csa:.2f} kWh/kg", 
-        f"€ {ckgb-ckga:.3f}", 
-        f"€ {dmarg:,.0f}"
+    "Difference (B vs A)": [
+        f"🔴 +€ {cb-ca:,.0f}", 
+        f"📈 +{pb-pa} kg/h", 
+        f"✅ +{ob-oa}%", 
+        f"📉 {scrb-scra}% (Less Scrap)", 
+        f"📉 {csb-csa:.2f} kWh/kg", 
+        f"✅ -€ {ckga-ckgb:.3f}", 
+        f"🔥 +€ {dmarg:,.0f}"
     ]
 }
 df = pd.DataFrame(data)
@@ -155,27 +153,20 @@ else:
 
     st.info(t['info_msg'].format(ckga - ckgb, p5y))
 
-    # TCO E CASH FLOW
-    st.subheader(t['tco_title'])
-    lbls = ['Investment', 'Material', 'Energy', 'Maintenance']
-    
-    ga, gb = st.columns(2)
-    with ga:
-        fig1 = go.Figure(data=[go.Pie(labels=lbls, values=[ca, mata*10, enea*10, mnta*10], hole=.4)])
-        fig1.update_layout(title=t['line_a'], height=350)
-        st.plotly_chart(fig1, use_container_width=True)
-    with gb:
-        fig2 = go.Figure(data=[go.Pie(labels=lbls, values=[cb, matb*10, eneb*10, mntb*10], hole=.4)])
-        fig2.update_layout(title=t['line_b'], height=350)
-        st.plotly_chart(fig2, use_container_width=True)
-
+    # SOLO GRAFICO CASH FLOW
     yrs = list(range(11))
     fa = [-ca + (marga * i) for i in yrs]
     fb = [-cb + (margb * i) for i in yrs]
     
+    
+    
     fig3 = go.Figure()
     fig3.add_trace(go.Scatter(x=yrs, y=fa, name=t['line_a'], line=dict(color='gray', dash='dot')))
     fig3.add_trace(go.Scatter(x=yrs, y=fb, name=t['line_b'], line=dict(color='#00CC96', width=4)))
-    fig3.add_hline(y=0)
-    fig3.update_layout(title="Cash Flow Cumulative", xaxis_title="Years", yaxis_title="€")
+    fig3.add_hline(y=0, line_color="black")
+    fig3.update_layout(title="Cumulative Cash Flow (10 Years)", xaxis_title="Years", yaxis_title="€ Cash Flow", height=500)
     st.plotly_chart(fig3, use_container_width=True)
+
+    # Bottone Report
+    report = f"Technical Comparison & ROI Analysis\n\nExtra Profit 5y: € {p5y:,.0f}\nPayback: {pbk:.1f} years\nCost/kg B: {ckgb:.3f} €"
+    st.download_button(t['download_btn'], report, file_name="roi_report.txt")
