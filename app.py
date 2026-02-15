@@ -74,7 +74,7 @@ lang_dict = {
 # 2. SELETTORE LINGUA NELLA SIDEBAR
 st.set_page_config(page_title="ROI Extrusion", layout="centered")
 st.sidebar.title("🌍 Language / Lingua")
-lingua_scelta = st.sidebar.selectbox("Select language", ["Italiano", "English", "Deutsch"])
+lingua_scelta = st.sidebar.selectbox("Select language", ["English", "Italiano", "Deutsch"])
 t = lang_dict[lingua_scelta] # t diventa il nostro "traduttore"
 
 # 3. INTERFACCIA USANDO IL DIZIONARIO
@@ -143,5 +143,6 @@ st.plotly_chart(fig, use_container_width=True)
 
 # Bottone Download
 st.download_button(t['download_btn'], f"ROI Analysis: {profitto_5y} €", file_name="report.txt")
+
 
 
