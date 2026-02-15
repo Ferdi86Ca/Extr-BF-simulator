@@ -1,95 +1,149 @@
 import streamlit as st
+import plotly.graph_objects as go
 
-# Configurazione pagina per Mobile
-st.set_page_config(page_title="Estrusione ROI", layout="centered")
+# Configurazione Pagina
+st.set_page_config(page_title="ROI Estrusione Pro", layout="centered")
 
-st.title("🚀 Simulatore ROI Estrusione")
-st.write("Confronto immediato tra due tecnologie")
+st.title("📊 Simulatore ROI Film in Bolla")
+st.write("Analisi basata su precisione $2\sigma$ e down-gauging.")
 
-# --- INPUT DI MERCATO (In alto, espandibile) ---
-with st.expander("Parametri di Mercato (Costi attuali)"):
-    costo_pe = st.number_input("Costo Polimero (€/kg)", value=1.50, step=0.1)
-    costo_en = st.slider("Costo Energia (€/kWh)", 0.10, 0.60, 0.25)
-    ore_anno = st.number_input("Ore produzione/anno", value=7000)
+# --- SIDEBAR: PARAMETRI GENERALI (MERCATO) ---
+st.sidebar.header("Parametri Generali")
+costo_pe = st.sidebar.number_input("Costo Polimero (€/kg)", value=1.50)
+prezzo_vendita = st.sidebar.number_input("Prezzo Vendita Film (€/kg)", value=2.80)
+costo_en = st.sidebar.number_input("Costo Energia (€/kWh)", value=0.25)
+ore_anno = st.sidebar.number_input("Ore produzione/anno", value=7500)
+tolleranza_mercato = st.sidebar.slider("Tolleranza Media Mercato (±%)", 1.0, 10.0, 6.0)
 
-# --- CONFRONTO LINEE ---
-st.header("Confronto Linee")
+# --- CORPO CENTRALE: CONFRONTO MACCHINE ---
+st.header("Confronto Linee di Estrusione")
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("Standard")
-    capex_a = st.number_input("Prezzo A (€)", value=600000)
+    st.subheader("Linea A (Standard)")
+    capex_a = st.number_input("Investimento A (€)", value=650000)
+    portata_a = st.number_input("Portata Oraria A (kg/h)", value=400)
     cons_a = st.number_input("Consumo A (kWh/kg)", value=0.60)
-    prec_a = st.number_input("Precisione A (±%)", value=5.0)
+    sigma_a = st.number_input("Precisione 2σ A (±%)", value=5.5)
 
 with col2:
-    st.subheader("Premium")
-    capex_b = st.number_input("Prezzo B (€)", value=850000)
+    st.subheader("Linea B (Premium)")
+    capex_b = st.number_input("Investimento B (€)", value=900000)
+    portata_b = st.number_input("Portata Oraria B (kg/h)", value=440)
     cons_b = st.number_input("Consumo B (kWh/kg)", value=0.42)
-    prec_b = st.number_input("Precisione B (±%)", value=1.5)
+    sigma_b = st.number_input("Precisione 2σ B (±%)", value=1.5)
 
-# --- LOGICA CALCOLO RAPIDO ---
-output_medio = 400 # kg/h
-risparmio_energia = (cons_a - cons_b) * output_medio * ore_anno * costo_en
-# Efficienza spessore (Down-gauging)
-risparmio_materiale = ((prec_a - prec_b)/100) * output_medio * ore_anno * costo_pe
+# --- LOGICA DI CALCOLO ---
 
-risparmio_totale = risparmio_energia + risparmio_materiale
+# 1. Calcolo Risparmio Materia Prima (Effetto Down-gauging)
+# Più la macchina è precisa (2sigma basso), più posso ridurre il set-point dello spessore
+risparmio_mat_percentuale = (tolleranza_mercato - sigma_b) / 100
+risparmio_mat_annuo = (portata_b * ore_anno) * costo_pe * risparmio_mat_percentuale
+
+# 2. Calcolo Differenza Produzione Vendibile
+prod_annua_a = portata_a * ore_anno
+prod_annua_b = portata_b * ore_anno
+extra_ricavo_produzione = (prod_annua_b - prod_annua_a) * (prezzo_vendita - costo_pe)
+
+# 3. Calcolo Risparmio Energetico
+costo_en_a = prod_annua_a * cons_a * costo_en
+costo_en_b = prod_annua_b * cons_b * costo_en
+risparmio_energia_annuo = costo_en_a - costo_en_b
+
+# 4. Margine Operativo Extra Totale (B vs A)
+margine_extra_totale = risparmio_mat_annuo + risparmio_energia_annuo + extra_ricavo_produzione
 delta_investimento = capex_b - capex_a
-payback = delta_investimento / risparmio_totale if risparmio_totale > 0 else 0
+payback = delta_investimento / margine_extra_totale if margine_extra_totale > 0 else 0
 
-# --- RISULTATI IMPATTANTI ---
+# --- VISUALIZZAZIONE RISULTATI ---
 st.divider()
-st.subheader("Risultato della Simulazione")
-st.metric("Risparmio Annuo Totale", f"€ {risparmio_totale:,.0f}")
+st.metric("Margine Extra Annuo (Linea B)", f"€ {margine_extra_totale:,.0f}")
 
 if payback > 0:
-    st.success(f"L'investimento Premium si ripaga in soli {payback:.1f} anni")
-else:
-    st.error("Verificare i parametri di input")
+    st.success(f"L'investimento extra si ripaga in {payback:.1f} anni")
 
-# Bottone per resettare o inviare log
-if st.button("Invia Simulazione via Email"):
-    st.write("Funzione configurabile per inviare il PDF al cliente.")
-
-# --- CALCOLO E GRAFICO IMPATTO 5 ANNI ---
-st.divider()
-st.subheader("💰 Impatto Economico nel Tempo")
-
-# Creiamo i dati per i prossimi 5 anni
+# GRAFICO CUMULATIVO
 anni = [1, 2, 3, 4, 5]
-risparmio_annuo_fisso = risparmio_totale # Il dato calcolato prima
-risparmio_cumulativo = [risparmio_annuo_fisso * i for i in anni]
-
-# Creiamo il grafico
-import plotly.graph_objects as go
+valori_cumulati = [margine_extra_totale * i for i in anni]
 
 fig = go.Figure()
+fig.add_trace(go.Bar(x=anni, y=valori_cumulati, name="Guadagno Extra Accumulato", marker_color='#2ca02c'))
+fig.add_hline(y=delta_investimento, line_dash="dash", line_color="red", annotation_text="Costo Extra Macchina B")
 
-# Bar chart per il risparmio
-fig.add_trace(go.Bar(
-    x=anni, 
-    y=risparmio_cumulativo,
-    name="Guadagno Extra Accumulato",
-    marker_color='#2ca02c'
-))
+fig.update_layout(title="Ritorno Economico in 5 Anni", xaxis_title="Anni", yaxis_title="Euro (€)")
+st.plotly_chart(fig, use_container_width=True)
 
-# Linea orizzontale che rappresenta il costo extra della macchina B
-fig.add_hline(
-    y=delta_investimento, 
-    line_dash="dash", 
-    line_color="red", 
-    annotation_text="Costo Extra Macchina Premium",
-    annotation_position="top left"
-)
+import streamlit as st
+import plotly.graph_objects as go
 
-fig.update_layout(
-    title="Ritorno dell'investimento extra (5 anni)",
-    xaxis_title="Anni di produzione",
-    yaxis_title="Euro (€)",
-    template="plotly_white",
-    hovermode="x unified"
-)
+# Configurazione Pagina
+st.set_page_config(page_title="ROI Estrusione Pro", layout="centered")
 
-# Mostra il grafico nell'app
+st.title("📊 Simulatore ROI Film in Bolla")
+st.write("Analisi basata su precisione $2\sigma$ e down-gauging.")
+
+# --- SIDEBAR: PARAMETRI GENERALI (MERCATO) ---
+st.sidebar.header("Parametri Generali")
+costo_pe = st.sidebar.number_input("Costo Polimero (€/kg)", value=1.50)
+prezzo_vendita = st.sidebar.number_input("Prezzo Vendita Film (€/kg)", value=2.80)
+costo_en = st.sidebar.number_input("Costo Energia (€/kWh)", value=0.25)
+ore_anno = st.sidebar.number_input("Ore produzione/anno", value=7500)
+tolleranza_mercato = st.sidebar.slider("Tolleranza Media Mercato (±%)", 1.0, 10.0, 6.0)
+
+# --- CORPO CENTRALE: CONFRONTO MACCHINE ---
+st.header("Confronto Linee di Estrusione")
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("Linea A (Standard)")
+    capex_a = st.number_input("Investimento A (€)", value=650000)
+    portata_a = st.number_input("Portata Oraria A (kg/h)", value=400)
+    cons_a = st.number_input("Consumo A (kWh/kg)", value=0.60)
+    sigma_a = st.number_input("Precisione 2σ A (±%)", value=5.5)
+
+with col2:
+    st.subheader("Linea B (Premium)")
+    capex_b = st.number_input("Investimento B (€)", value=900000)
+    portata_b = st.number_input("Portata Oraria B (kg/h)", value=440)
+    cons_b = st.number_input("Consumo B (kWh/kg)", value=0.42)
+    sigma_b = st.number_input("Precisione 2σ B (±%)", value=1.5)
+
+# --- LOGICA DI CALCOLO ---
+
+# 1. Calcolo Risparmio Materia Prima (Effetto Down-gauging)
+# Più la macchina è precisa (2sigma basso), più posso ridurre il set-point dello spessore
+risparmio_mat_percentuale = (tolleranza_mercato - sigma_b) / 100
+risparmio_mat_annuo = (portata_b * ore_anno) * costo_pe * risparmio_mat_percentuale
+
+# 2. Calcolo Differenza Produzione Vendibile
+prod_annua_a = portata_a * ore_anno
+prod_annua_b = portata_b * ore_anno
+extra_ricavo_produzione = (prod_annua_b - prod_annua_a) * (prezzo_vendita - costo_pe)
+
+# 3. Calcolo Risparmio Energetico
+costo_en_a = prod_annua_a * cons_a * costo_en
+costo_en_b = prod_annua_b * cons_b * costo_en
+risparmio_energia_annuo = costo_en_a - costo_en_b
+
+# 4. Margine Operativo Extra Totale (B vs A)
+margine_extra_totale = risparmio_mat_annuo + risparmio_energia_annuo + extra_ricavo_produzione
+delta_investimento = capex_b - capex_a
+payback = delta_investimento / margine_extra_totale if margine_extra_totale > 0 else 0
+
+# --- VISUALIZZAZIONE RISULTATI ---
+st.divider()
+st.metric("Margine Extra Annuo (Linea B)", f"€ {margine_extra_totale:,.0f}")
+
+if payback > 0:
+    st.success(f"L'investimento extra si ripaga in {payback:.1f} anni")
+
+# GRAFICO CUMULATIVO
+anni = [1, 2, 3, 4, 5]
+valori_cumulati = [margine_extra_totale * i for i in anni]
+
+fig = go.Figure()
+fig.add_trace(go.Bar(x=anni, y=valori_cumulati, name="Guadagno Extra Accumulato", marker_color='#2ca02c'))
+fig.add_hline(y=delta_investimento, line_dash="dash", line_color="red", annotation_text="Costo Extra Macchina B")
+
+fig.update_layout(title="Ritorno Economico in 5 Anni", xaxis_title="Anni", yaxis_title="Euro (€)")
 st.plotly_chart(fig, use_container_width=True)
