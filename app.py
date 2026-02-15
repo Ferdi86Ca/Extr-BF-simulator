@@ -109,7 +109,9 @@ with col_a:
     oa = st.number_input("OEE (%) Standard", value=83.0)
     sa = st.number_input("2-Sigma (%) Standard", value=3.5)
     scra = st.number_input("Scrap (%) Standard", value=2.0)
-    ma, csa = 3.5, 0.40
+    # Parametri Manutenzione Standard
+    ma_std = 2.5
+    csa = 0.40
 
 with col_p:
     st.subheader(f"💎 {t['line_b']}")
@@ -118,15 +120,18 @@ with col_p:
     op = st.number_input("OEE (%) Premium", value=87.0)
     sp = st.number_input("2-Sigma (%) Premium", value=1.5)
     scrp = st.number_input("Scrap (%) Premium", value=1.5)
-    mp, csp = 2.0, 0.35
+    # Parametri Manutenzione Premium
+    mp_pre = 1.5
+    csp = 0.35
 
-# --- CALCOLI ---
+# --- CALCOLI (Inclusi costi manutenzione differenziati) ---
 ton_a = (pa * h_an * (oa/100) * (1 - scra/100)) / 1000
 ton_p = (pp * h_an * (op/100) * (1 - scrp/100)) / 1000
 diff_tons = ton_p - ton_a
 
-opexa = (pa*h_an*(oa/100)*c_poly) + (pa*h_an*(oa/100)*csa*c_ene) + (ca*ma/100)
-opexp = (pp*h_an*(op/100)*c_poly*(1-(tol_m-sp)/100)) + (pp*h_an*(op/100)*csp*c_ene) + (cp*mp/100)
+# OPEX: Mat. Prima + Energia + Manutenzione (% CAPEX)
+opexa = (pa*h_an*(oa/100)*c_poly) + (pa*h_an*(oa/100)*csa*c_ene) + (ca*(ma_std/100))
+opexp = (pp*h_an*(op/100)*c_poly*(1-(tol_m-sp)/100)) + (pp*h_an*(op/100)*csp*c_ene) + (cp*(mp_pre/100))
 
 ckga = (opexa + (ca/10)) / (ton_a*1000) if ton_a > 0 else 0
 ckgp = (opexp + (cp/10)) / (ton_p*1000) if ton_p > 0 else 0
@@ -149,16 +154,12 @@ st.table(df_vis)
 st.header(t['res_title'])
 with st.container():
     c1, c2, c3, c4 = st.columns(4)
-    # Utilizzo di HTML per enfatizzare i valori senza rompere il codice
     c1.markdown(f"### <span style='color:#00CC96'>{simbolo} {dmarg*cambio:,.0f}</span>", unsafe_allow_html=True)
     c1.caption(f"**{t['margin_yr']} Extra**")
-    
     c2.markdown(f"### <span style='color:#00CC96'>+{diff_tons:,.0f} T</span>", unsafe_allow_html=True)
     c2.caption(f"**{t['extra_tons']}**")
-    
     c3.markdown(f"### <span style='color:#FF4B4B'>{pbk:.1f} Yrs</span>", unsafe_allow_html=True)
     c3.caption(f"**{t['payback']}**")
-    
     c4.markdown(f"### <span style='color:#00CC96'>{simbolo} {p5y*cambio:,.0f}</span>", unsafe_allow_html=True)
     c4.caption(f"**{t['profit_5y']}**")
 
@@ -177,7 +178,7 @@ st.divider()
 st.subheader(t['notes_label'])
 meeting_notes = st.text_area("", placeholder=t['notes_placeholder'], height=150)
 
-# --- PDF GENERATOR (Invariato) ---
+# --- PDF GENERATOR ---
 def create_pdf():
     pdf = FPDF()
     pdf.add_page()
@@ -196,7 +197,7 @@ def create_pdf():
     pdf.cell(60, 8, "Hourly Output", 1); pdf.cell(65, 8, f"{pa} kg/h", 1); pdf.cell(65, 8, f"{pp} kg/h", 1, 1)
     pdf.cell(60, 8, "OEE Efficiency", 1); pdf.cell(65, 8, f"{oa}%", 1); pdf.cell(65, 8, f"{op}%", 1, 1)
     pdf.cell(60, 8, "Scrap Rate", 1); pdf.cell(65, 8, f"{scra}%", 1); pdf.cell(65, 8, f"{scrp}%", 1, 1)
-    pdf.cell(60, 8, "2-Sigma Precision", 1); pdf.cell(65, 8, f"{sa}%", 1); pdf.cell(65, 8, f"{sp}%", 1, 1)
+    pdf.cell(60, 8, "Maintenance/yr", 1); pdf.cell(65, 8, f"{ma_std}% CAPEX", 1); pdf.cell(65, 8, f"{mp_pre}% CAPEX", 1, 1)
     pdf.ln(5); pdf.set_font("Arial", "B", 12)
     pdf.cell(190, 10, " 3. ROI SUMMARY", ln=True, fill=True)
     pdf.set_font("Arial", "", 10)
