@@ -2,7 +2,7 @@ import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
 
-# 1. TRADUZIONI
+# 1. DIZIONARIO TRADUZIONI MULTILINGUA
 lang_dict = {
     "English": {
         "sidebar_market": "Market Parameters",
@@ -28,7 +28,8 @@ lang_dict = {
         "cost_kg": "Prod. Cost per KG",
         "profit_5y": "Extra Profit (5y)",
         "info_msg": "💡 Line B reduces cost per KG by € {:.3f}. Extra profit in 5 years: € {:,.0f}",
-        "download_btn": "📩 Download Report"
+        "download_btn": "📩 Download Report",
+        "diff_col": "Difference (B vs A)"
     },
     "Italiano": {
         "sidebar_market": "Parametri Mercato",
@@ -54,13 +55,69 @@ lang_dict = {
         "cost_kg": "Costo al KG",
         "profit_5y": "Extra Profitto (5 anni)",
         "info_msg": "💡 La Linea B riduce il costo al KG di € {:.3f}. Extra profitto in 5 anni: € {:,.0f}",
-        "download_btn": "📩 Scarica Report"
+        "download_btn": "📩 Scarica Report",
+        "diff_col": "Differenza (B vs A)"
+    },
+    "Deutsch": {
+        "sidebar_market": "Marktparameter",
+        "poly_cost": "Polymerpreis (€/kg)",
+        "sell_price": "Verkaufspreis Film (€/kg)",
+        "energy_cost": "Energiekosten (€/kWh)",
+        "hours": "Theoretische Std/Jahr",
+        "market_tol": "Markttoleranz (±%)",
+        "header_comp": "Linienvergleich",
+        "line_a": "Linie A (Standard)",
+        "line_b": "Linie B (Premium)",
+        "capex": "Investition (€)",
+        "output": "Ausstoß (kg/h)",
+        "cons": "Verbrauch (kWh/kg)",
+        "precision": "2σ Präzision (±%)",
+        "maint": "Wartung (%)",
+        "oee": "OEE Effizienz (%)",
+        "scrap": "Ausschussrate (%)",
+        "res_title": "🏁 ROI-Analyseergebnisse",
+        "tech_comp": "📊 Vergleichstabelle der Leistung",
+        "extra_margin": "Zusätzliche Jahresmarge",
+        "payback": "Amortisation (Jahre)",
+        "cost_kg": "Prod.-Kosten pro KG",
+        "profit_5y": "Extra Profit (5 J.)",
+        "info_msg": "💡 Linie B senkt die Kosten pro KG um € {:.3f}. Extra Profit in 5 Jahren: € {:,.0f}",
+        "download_btn": "📩 Bericht Herunterladen",
+        "diff_col": "Differenz (B vs A)"
+    },
+    "Español": {
+        "sidebar_market": "Parámetros de Mercado",
+        "poly_cost": "Costo Polímero (€/kg)",
+        "sell_price": "Precio Venta Film (€/kg)",
+        "energy_cost": "Costo Energía (€/kWh)",
+        "hours": "Horas Teóricas/Año",
+        "market_tol": "Tolerancia Mercado (±%)",
+        "header_comp": "Comparación de Líneas",
+        "line_a": "Línea A (Estándar)",
+        "line_b": "Línea B (Premium)",
+        "capex": "Inversión (€)",
+        "output": "Rendimiento (kg/h)",
+        "cons": "Consumo (kWh/kg)",
+        "precision": "Precisión 2σ (±%)",
+        "maint": "Mantenimiento (%)",
+        "oee": "OEE Eficiencia (%)",
+        "scrap": "Tasa de Desperdicio (%)",
+        "res_title": "🏁 Resultados del Análisis ROI",
+        "tech_comp": "📊 Tabla Comparativa de Rendimiento",
+        "extra_margin": "Margen Anual Extra",
+        "payback": "Retorno (Años)",
+        "cost_kg": "Costo Prod. por KG",
+        "profit_5y": "Extra Beneficio (5a)",
+        "info_msg": "💡 La Línea B reduce el costo por KG en € {:.3f}. Beneficio extra en 5 años: € {:,.0f}",
+        "download_btn": "📩 Descargar Informe",
+        "diff_col": "Diferencia (B vs A)"
     }
 }
 
 st.set_page_config(page_title="ROI Extrusion", layout="wide")
 
-lingua = st.sidebar.selectbox("Language / Lingua", ["English", "Italiano"])
+# Selezione Lingua (English prima)
+lingua = st.sidebar.selectbox("Language / Sprache / Idioma", ["English", "Italiano", "Deutsch", "Español"])
 t = lang_dict[lingua]
 
 # --- INPUT SIDEBAR ---
@@ -119,19 +176,19 @@ dmarg = margb - marga
 pbk = (cb - ca) / dmarg if dmarg > 0 else 0
 p5y = (dmarg * 5) - (cb - ca)
 
-# --- TABELLA COMPARATIVA POTENZIATA ---
+# --- TABELLA COMPARATIVA ---
 st.markdown("---")
 st.subheader(t['tech_comp'])
 
 data = {
-    "Parameter": [t['capex'], t['output'], t['oee'], t['scrap'], t['cons'], t['cost_kg'], "Annual Margin"],
+    "Parameter": [t['capex'], t['output'], t['oee'], t['scrap'], t['cons'], t['cost_kg'], t['extra_margin']],
     t['line_a']: [f"€ {ca:,.0f}", f"{pa} kg/h", f"{oa}%", f"{scra}%", f"{csa} kWh/kg", f"€ {ckga:.3f}", f"€ {marga:,.0f}"],
     t['line_b']: [f"€ {cb:,.0f}", f"{pb} kg/h", f"{ob}%", f"{scrb}%", f"{csb} kWh/kg", f"€ {ckgb:.3f}", f"€ {margb:,.0f}"],
-    "Difference (B vs A)": [
+    t['diff_col']: [
         f"🔴 +€ {cb-ca:,.0f}", 
         f"📈 +{pb-pa} kg/h", 
         f"✅ +{ob-oa}%", 
-        f"📉 {scrb-scra}% (Less Scrap)", 
+        f"📉 {scrb-scra}%", 
         f"📉 {csb-csa:.2f} kWh/kg", 
         f"✅ -€ {ckga-ckgb:.3f}", 
         f"🔥 +€ {dmarg:,.0f}"
@@ -148,17 +205,15 @@ if dmarg <= 0:
 else:
     c1, c2, c3 = st.columns(3)
     c1.metric(t['extra_margin'], f"€ {dmarg:,.0f}")
-    c2.metric(t['payback'], f"{pbk:.1f} Years")
+    c2.metric(t['payback'], f"{pbk:.1f} Yrs")
     c3.metric(t['profit_5y'], f"€ {p5y:,.0f}")
 
     st.info(t['info_msg'].format(ckga - ckgb, p5y))
 
-    # SOLO GRAFICO CASH FLOW
+    # GRAFICO CASH FLOW
     yrs = list(range(11))
     fa = [-ca + (marga * i) for i in yrs]
     fb = [-cb + (margb * i) for i in yrs]
-    
-    
     
     fig3 = go.Figure()
     fig3.add_trace(go.Scatter(x=yrs, y=fa, name=t['line_a'], line=dict(color='gray', dash='dot')))
@@ -168,5 +223,5 @@ else:
     st.plotly_chart(fig3, use_container_width=True)
 
     # Bottone Report
-    report = f"Technical Comparison & ROI Analysis\n\nExtra Profit 5y: € {p5y:,.0f}\nPayback: {pbk:.1f} years\nCost/kg B: {ckgb:.3f} €"
-    st.download_button(t['download_btn'], report, file_name="roi_report.txt")
+    report = f"Analysis - {lingua}\n\nExtra Profit 5y: € {p5y:,.0f}\nPayback: {pbk:.1f} years\nCost/kg B: {ckgb:.3f} €"
+    st.download_button(t['download_btn'], report, file_name=f"ROI_{lingua}.txt")
