@@ -83,9 +83,9 @@ st.title(f"📊 {t['res_title']}")
 # Parametri Mercato
 st.sidebar.divider()
 st.sidebar.header(t['sidebar_market'])
-costo_pe = st.sidebar.number_input(t['poly_cost'], value=1.50)
-prezzo_vendita = st.sidebar.number_input(t['sell_price'], value=2.80)
-costo_en = st.sidebar.number_input(t['energy_cost'], value=0.25)
+costo_pe = st.sidebar.number_input(t['poly_cost'], value=1.40)
+prezzo_vendita = st.sidebar.number_input(t['sell_price'], value=2.10)
+costo_en = st.sidebar.number_input(t['energy_cost'], value=0.22)
 ore_anno = st.sidebar.number_input(t['hours'], value=7500)
 tolleranza_mercato = st.sidebar.slider(t['market_tol'], 1.0, 10.0, 6.0)
 
@@ -143,4 +143,5 @@ st.plotly_chart(fig, use_container_width=True)
 
 # Bottone Download
 st.download_button(t['download_btn'], f"ROI Analysis: {profitto_5y} €", file_name="report.txt")
+
 
