@@ -1,7 +1,7 @@
 import streamlit as st
 import plotly.graph_objects as go
 
-# 1. DIZIONARIO TRADUZIONI
+# 1. TRADUZIONI
 lang_dict = {
     "English": {
         "sidebar_market": "Market Parameters",
@@ -27,8 +27,7 @@ lang_dict = {
         "profit_5y": "Extra Profit (5y)",
         "tco_title": "TCO 10 Years (€)",
         "info_msg": "💡 Line B saves {:.3f} €/kg. 5y Extra Profit: € {:,.0f}",
-        "download_btn": "📩 Download Report",
-        "err_msg": "⚠️ Check inputs: margins must be positive to calculate ROI."
+        "download_btn": "📩 Download Report"
     },
     "Italiano": {
         "sidebar_market": "Parametri Mercato",
@@ -54,96 +53,96 @@ lang_dict = {
         "profit_5y": "Extra Profitto (5 anni)",
         "tco_title": "TCO 10 Anni (€)",
         "info_msg": "💡 Linea B risparmia {:.3f} €/kg. Extra Profitto 5a: € {:,.0f}",
-        "download_btn": "📩 Scarica Report",
-        "err_msg": "⚠️ Verifica i dati: i margini devono essere positivi per calcolare il ROI."
+        "download_btn": "📩 Scarica Report"
     }
 }
 
-st.set_page_config(page_title="ROI Extrusion Calculator", layout="centered")
+st.set_page_config(page_title="ROI Extrusion", layout="wide")
 
-# --- SELECTOR LINGUA ---
-if 'lang' not in st.sidebar:
-    st.sidebar.title("🌍 Language")
-lingua_scelta = st.sidebar.selectbox("Select language / Lingua", ["English", "Italiano"])
-t = lang_dict[lingua_scelta]
+# Selezione Lingua
+lingua = st.sidebar.selectbox("Language / Lingua", ["English", "Italiano"])
+t = lang_dict[lingua]
 
-# --- SIDEBAR MERCATO ---
+# --- INPUT SIDEBAR ---
 st.sidebar.header(t['sidebar_market'])
-c_pe = st.sidebar.number_input(t['poly_cost'], value=1.40, step=0.05, format="%.2f")
-p_ve = st.sidebar.number_input(t['sell_price'], value=2.10, step=0.05, format="%.2f")
-c_en = st.sidebar.number_input(t['energy_cost'], value=0.22, step=0.01, format="%.2f")
-h_an = st.sidebar.number_input(t['hours'], value=8000, step=100)
+c_pe = st.sidebar.number_input(t['poly_cost'], value=1.40, format="%.2f")
+p_ve = st.sidebar.number_input(t['sell_price'], value=2.10, format="%.2f")
+c_en = st.sidebar.number_input(t['energy_cost'], value=0.22, format="%.2f")
+h_an = st.sidebar.number_input(t['hours'], value=8000)
 tol_m = st.sidebar.slider(t['market_tol'], 1.0, 10.0, 6.0)
 
-# --- INPUT MACCHINE ---
+# --- INPUT COLONNE ---
 st.header(t['header_comp'])
-col1, col2 = st.columns(2)
+col_a, col_b = st.columns(2)
 
-with col1:
+with col_a:
     st.subheader(t['line_a'])
-    ca = st.number_input(f"{t['capex']} A", value=1500000, step=1000, key="ka1")
-    pa = st.number_input(f"{t['output']} A", value=400, key="ka2")
-    csa = st.number_input(f"{t['cons']} A", value=0.40, key="ka3")
-    sa = st.number_input(f"{t['precision']} A", value=4.5, key="ka4")
-    ma = st.number_input(f"{t['maint']} A", value=3.5, key="ka5")
-    oa = st.number_input(f"{t['oee']} A", value=75.0, key="ka6")
-    scra = st.number_input(f"{t['scrap']} A", value=4.0, key="ka7")
+    ca = st.number_input(f"{t['capex']} A", value=1500000, key="a1")
+    pa = st.number_input(f"{t['output']} A", value=400, key="a2")
+    csa = st.number_input(f"{t['cons']} A", value=0.40, key="a3")
+    sa = st.number_input(f"{t['precision']} A", value=4.5, key="a4")
+    ma = st.number_input(f"{t['maint']} A", value=3.5, key="a5")
+    oa = st.number_input(f"{t['oee']} A", value=75.0, key="a6")
+    scra = st.number_input(f"{t['scrap']} A", value=4.0, key="a7")
 
-with col2:
+with col_b:
     st.subheader(t['line_b'])
-    cb = st.number_input(f"{t['capex']} B", value=2000000, step=1000, key="kb1")
-    pb = st.number_input(f"{t['output']} B", value=440, key="kb2")
-    csb = st.number_input(f"{t['cons']} B", value=0.35, key="kb3")
-    sb = st.number_input(f"{t['precision']} B", value=1.5, key="kb4")
-    mb = st.number_input(f"{t['maint']} B", value=2.0, key="kb5")
-    ob = st.number_input(f"{t['oee']} B", value=85.0, key="kb6")
-    scrb = st.number_input(f"{t['scrap']} B", value=1.5, key="kb7")
+    cb = st.number_input(f"{t['capex']} B", value=2000000, key="b1")
+    pb = st.number_input(f"{t['output']} B", value=440, key="b2")
+    csb = st.number_input(f"{t['cons']} B", value=0.35, key="b3")
+    sb = st.number_input(f"{t['precision']} B", value=1.5, key="b4")
+    mb = st.number_input(f"{t['maint']} B", value=2.0, key="b5")
+    ob = st.number_input(f"{t['oee']} B", value=85.0, key="b6")
+    scrb = st.number_input(f"{t['scrap']} B", value=1.5, key="b7")
 
-# --- LOGICA CALCOLI CON PROTEZIONE ERRORI ---
-try:
-    # Produzione
-    pr_a = (pa * h_an * (oa/100))
-    pr_b = (pb * h_an * (ob/100))
-    net_a = pr_a * (1 - scra/100)
-    net_b = pr_b * (1 - scrb/100)
+# --- CALCOLI ---
+# Produzione
+pra = pa * h_an * (oa/100)
+prb = pb * h_an * (ob/100)
+neta = pra * (1 - scra/100)
+netb = prb * (1 - scrb/100)
 
-    # Opex
-    mat_a = pr_a * c_pe
-    mat_b = pr_b * c_pe * (1 - (tol_m - sb)/100)
-    ene_a = pr_a * csa * c_en
-    ene_b = pr_b * csb * c_en
-    mnt_a = ca * (ma/100)
-    mnt_b = cb * (mb/100)
+# Opex
+mata = pra * c_pe
+matb = prb * c_pe * (1 - (tol_m - sb)/100)
+enea = pra * csa * c_en
+eneb = prb * csb * c_en
+mnta = ca * (ma/100)
+mntb = cb * (mb/100)
 
-    opex_a = mat_a + ene_a + mnt_a
-    opex_b = mat_b + ene_b + mnt_b
+opexa = mata + enea + mnta
+opexb = matb + eneb + mntb
 
-    # Metriche core
-    cost_kg_a = (opex_a + (ca/10)) / net_a if net_a > 0 else 0
-    cost_kg_b = (opex_b + (cb/10)) / net_b if net_b > 0 else 0
-    marg_a = (net_a * p_ve) - opex_a
-    marg_b = (net_b * p_ve) - opex_b
+# Metriche
+ckga = (opexa + (ca/10)) / neta if neta > 0 else 0
+ckgb = (opexb + (cb/10)) / netb if netb > 0 else 0
+marga = (neta * p_ve) - opexa
+margb = (netb * p_ve) - opexb
+dmarg = margb - marga
+pbk = (cb - ca) / dmarg if dmarg > 0 else 0
+p5y = (dmarg * 5) - (cb - ca)
+
+# --- DISPLAY RISULTATI ---
+st.markdown("---")
+st.title(t['res_title'])
+
+if dmarg <= 0:
+    st.error("Marginality of Line B is lower than Line A. ROI cannot be calculated.")
+else:
+    c1, c2, c3 = st.columns(3)
+    c1.metric(t['extra_margin'], f"€ {dmarg:,.0f}")
+    c2.metric(t['cost_kg'] + " (B)", f"€ {ckgb:.3f}", delta=f"{ckgb-ckga:.3f}", delta_color="inverse")
+    c3.metric(t['profit_5y'], f"€ {p5y:,.0f}")
+
+    st.info(t['info_msg'].format(ckga - ckgb, p5y))
+
+    # TCO PIE CHARTS
+    st.subheader(t['tco_title'])
     
-    delta_marg = marg_b - marg_a
-    payback = (cb - ca) / delta_marg if delta_marg > 0 else 0
-    prof_5y = (delta_marg * 5) - (cb - ca)
+    lbls = ['Investment', 'Material', 'Energy', 'Maintenance']
+    vals_a = [ca, mata*10, enea*10, mnta*10]
+    vals_b = [cb, matb*10, eneb*10, mntb*10]
 
-    # --- OUTPUT VISUALE ---
-    st.divider()
-    st.subheader(t['res_title'])
-    
-    if delta_marg <= 0:
-        st.warning(t['err_msg'])
-    else:
-        c1, c2, c3 = st.columns(3)
-        c1.metric(t['extra_margin'], f"€ {delta_marg:,.0f}")
-        c2.metric(t['cost_kg'] + " (B)", f"€ {cost_kg_b:.3f}", delta=f"{cost_kg_b-cost_kg_a:.3f}", delta_color="inverse")
-        c3.metric(t['profit_5y'], f"€ {prof_5y:,.0f}")
-
-        st.info(t['info_msg'].format(cost_kg_a - cost_kg_b, prof_5y))
-
-        # --- GRAFICI ---
-        st.subheader(t['tco_title'])
-        
-        labels = ['Investment', 'Material', 'Energy', 'Maintenance']
-        col_c1,
+    ga, gb = st.columns(2)
+    with ga:
+        fig1 = go.Figure(data=[go.Pie
