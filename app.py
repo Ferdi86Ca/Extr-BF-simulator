@@ -94,15 +94,15 @@ st.header(t['header_comp'])
 col1, col2 = st.columns(2)
 with col1:
     st.subheader(t['line_a'])
-    capex_a = st.number_input(f"{t['capex']} A", value=650000, key="ca")
+    capex_a = st.number_input(f"{t['capex']} A", value=1500000, key="ca")
     portata_a = st.number_input(f"{t['output']} A", value=400, key="pa")
-    cons_a = st.number_input(f"{t['cons']} A", value=0.60, key="csa")
-    sigma_a = st.number_input(f"{t['precision']} A", value=5.5, key="sa")
+    cons_a = st.number_input(f"{t['cons']} A", value=0.40, key="csa")
+    sigma_a = st.number_input(f"{t['precision']} A", value=4.5, key="sa")
 with col2:
     st.subheader(t['line_b'])
-    capex_b = st.number_input(f"{t['capex']} B", value=900000, key="cb")
+    capex_b = st.number_input(f"{t['capex']} B", value=2000000, key="cb")
     portata_b = st.number_input(f"{t['output']} B", value=440, key="pb")
-    cons_b = st.number_input(f"{t['cons']} B", value=0.42, key="csb")
+    cons_b = st.number_input(f"{t['cons']} B", value=0.35, key="csb")
     sigma_b = st.number_input(f"{t['precision']} B", value=1.5, key="sb")
 
 # --- LOGICA CALCOLI (Identica a prima) ---
@@ -143,3 +143,4 @@ st.plotly_chart(fig, use_container_width=True)
 
 # Bottone Download
 st.download_button(t['download_btn'], f"ROI Analysis: {profitto_5y} €", file_name="report.txt")
+
