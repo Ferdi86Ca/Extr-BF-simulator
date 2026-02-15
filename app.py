@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 import pandas as pd
 from fpdf import FPDF
 
-# 1. DIZIONARIO TRADUZIONI COMPLETO (Senza Omissioni)
+# 1. DIZIONARIO TRADUZIONI COMPLETO (Ordine invertito: EN prima)
 lang_dict = {
     "English": {
         "title": "ROI Extrusion",
@@ -19,7 +19,9 @@ lang_dict = {
         "annual_prod": "Annual Net Production",
         "margin_yr": "Annual Margin",
         "exchange_rate": "Exchange Rate (1€ = X $)",
-        "output_h": "Hourly Output"
+        "output_h": "Hourly Output",
+        "notes_label": "Meeting Notes / Comments",
+        "notes_placeholder": "Enter meeting agreements or customer observations here..."
     },
     "Italiano": {
         "title": "ROI Extrusion",
@@ -35,7 +37,9 @@ lang_dict = {
         "annual_prod": "Produzione Annua Netta",
         "margin_yr": "Margine Annuo",
         "exchange_rate": "Tasso di Cambio (1€ = X $)",
-        "output_h": "Portata Oraria"
+        "output_h": "Portata Oraria",
+        "notes_label": "Note del Meeting / Commenti",
+        "notes_placeholder": "Inserisci qui gli accordi presi o le osservazioni del cliente..."
     },
     "Deutsch": {
         "title": "ROI Extrusion",
@@ -51,7 +55,9 @@ lang_dict = {
         "annual_prod": "Jährliche Nettoproduktion",
         "margin_yr": "Jährliche Marge",
         "exchange_rate": "Wechselkurs (1€ = X $)",
-        "output_h": "Stundenleistung"
+        "output_h": "Stundenleistung",
+        "notes_label": "Besprechungsnotizen",
+        "notes_placeholder": "Geben Sie hier Vereinbarungen oder Kundenbeobachtungen ein..."
     },
     "Español": {
         "title": "ROI Extrusion",
@@ -67,12 +73,16 @@ lang_dict = {
         "annual_prod": "Producción Neta Anual",
         "margin_yr": "Margen Anual",
         "exchange_rate": "Tipo de Cambio (1€ = X $)",
-        "output_h": "Capacidad Horaria"
+        "output_h": "Capacidad Horaria",
+        "notes_label": "Notas de la reunión",
+        "notes_placeholder": "Ingrese aquí los acuerdos o las observaciones del cliente..."
     }
 }
 
 st.set_page_config(page_title="ROI Extrusion", layout="wide")
-lingua = st.sidebar.selectbox("Language / Lingua / Sprache / Idioma", ["Italiano", "English", "Deutsch", "Español"])
+
+# Selezione Lingua (English Default)
+lingua = st.sidebar.selectbox("Language / Lingua / Sprache / Idioma", ["English", "Italiano", "Deutsch", "Español"])
 t = lang_dict[lingua]
 
 st.title(t['title'])
@@ -91,7 +101,7 @@ c_ene = st.sidebar.number_input(f"Energy Cost ({simbolo}/kWh)", value=0.22 * cam
 h_an = st.sidebar.number_input("Hours/Year", value=8000)
 tol_m = st.sidebar.slider("Market Tol. (±%)", 1.0, 10.0, 6.0)
 
-# --- INPUT COMPARAZIONE (Parametri Aggiornati) ---
+# --- INPUT COMPARAZIONE ---
 col_a, col_p = st.columns(2)
 with col_a:
     st.subheader(f"⚪ {t['line_a']}")
@@ -126,7 +136,7 @@ dmarg = margp - marga
 pbk = (cp - ca) / dmarg if dmarg > 0 else 0
 p5y = (dmarg * 5) - (cp - ca)
 
-# --- TABELLA UI CON PORTATA ORARIA ---
+# --- TABELLA UI ---
 st.subheader(t['tech_comp'])
 df_vis = pd.DataFrame({
     "Metric": [t['output_h'], t['annual_prod'], "OEE %", "Scrap %", "2-Sigma %", t['cost_kg'], t['margin_yr']],
@@ -136,14 +146,8 @@ df_vis = pd.DataFrame({
 })
 st.table(df_vis)
 
-# KPI & GRAFICO
+# --- GRAFICO PAYBACK ---
 st.header(t['res_title'])
-k1, k2, k3, k4 = st.columns(4)
-k1.metric(t['margin_yr'] + " Extra", f"{simbolo} {dmarg*cambio:,.0f}")
-k2.metric(t['extra_tons'], f"+{diff_tons:,.0f} T")
-k3.metric(t['payback'], f"{pbk:.1f} Yrs")
-k4.metric(t['profit_5y'], f"{simbolo} {p5y*cambio:,.0f}")
-
 yrs = list(range(11))
 fa = [(-ca + (marga * i)) * cambio for i in yrs]
 fp = [(-cp + (margp * i)) * cambio for i in yrs]
@@ -153,21 +157,26 @@ fig.add_trace(go.Scatter(x=yrs, y=fp, name=t['line_b'], line=dict(color='#00CC96
 fig.add_hline(y=0, line_color="black")
 st.plotly_chart(fig, use_container_width=True)
 
-# --- PDF FULL DATA ---
+# --- CASELLA NOTE ---
+st.divider()
+st.subheader(t['notes_label'])
+meeting_notes = st.text_area("", placeholder=t['notes_placeholder'], height=150)
+
+# --- PDF GENERATOR ---
 def create_pdf():
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(190, 10, "ROI EXTRUSION - STRATEGIC DEBRIEF", ln=True, align='C')
+    pdf.cell(190, 10, "ROI EXTRUSION - STRATEGIC REPORT", ln=True, align='C')
     pdf.ln(5)
     
-    # Parametri Mercato
+    # 1. Market Data
     pdf.set_font("Arial", "B", 12); pdf.set_fill_color(240, 240, 240)
     pdf.cell(190, 10, " 1. MARKET DATA", ln=True, fill=True)
     pdf.set_font("Arial", "", 10)
     pdf.cell(95, 8, f"Polymer: {c_poly*cambio:,.2f} {simbolo}/kg", 1); pdf.cell(95, 8, f"Energy: {c_ene*cambio:,.2f} {simbolo}/kWh", 1, 1)
     
-    # Dettagli Tecnici (Inclusa Portata)
+    # 2. Technical Data
     pdf.ln(5); pdf.set_font("Arial", "B", 12)
     pdf.cell(190, 10, " 2. TECHNICAL SPECIFICATIONS", ln=True, fill=True)
     pdf.set_font("Arial", "B", 9)
@@ -178,12 +187,18 @@ def create_pdf():
     pdf.cell(60, 8, "Scrap Rate", 1); pdf.cell(65, 8, f"{scra}%", 1); pdf.cell(65, 8, f"{scrp}%", 1, 1)
     pdf.cell(60, 8, "2-Sigma Precision", 1); pdf.cell(65, 8, f"{sa}%", 1); pdf.cell(65, 8, f"{sp}%", 1, 1)
     
-    # Risultati
+    # 3. Results
     pdf.ln(5); pdf.set_font("Arial", "B", 12)
     pdf.cell(190, 10, " 3. ROI SUMMARY", ln=True, fill=True)
     pdf.set_font("Arial", "", 10)
-    pdf.cell(95, 10, f"Payback Time: {pbk:.1f} Years", 1); pdf.cell(95, 10, f"Extra Margin/Year: {dmarg*cambio:,.0f} {simbolo}", 1, 1)
-    pdf.cell(95, 10, f"Extra Production: {diff_tons:,.0f} Tons/Year", 1); pdf.cell(95, 10, f"5-Year Extra Profit: {p5y*cambio:,.0f} {simbolo}", 1, 1)
+    pdf.cell(95, 10, f"Payback Time: {pbk:.1f} Years", 1); pdf.cell(95, 10, f"5-Year Profit: {p5y*cambio:,.0f} {simbolo}", 1, 1)
+    
+    # 4. Meeting Notes
+    if meeting_notes:
+        pdf.ln(5); pdf.set_font("Arial", "B", 12)
+        pdf.cell(190, 10, " 4. MEETING NOTES", ln=True, fill=True)
+        pdf.set_font("Arial", "", 10)
+        pdf.multi_cell(190, 8, meeting_notes, 1)
     
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
