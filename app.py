@@ -3,126 +3,79 @@ import plotly.graph_objects as go
 import pandas as pd
 from fpdf import FPDF
 
-# 1. TRADUZIONI COMPLETE
+# 1. TRADUZIONI E CONFIGURAZIONE
 lang_dict = {
     "English": {
-        "title": "ROI Extrusion Multi-Lang",
-        "sidebar_market": "Market Parameters",
-        "currency_settings": "Currency Settings",
-        "exchange_rate": "Exchange Rate (1€ = X $)",
-        "poly_cost": "Polymer Cost",
-        "sell_price": "Film Selling Price",
-        "energy_cost": "Energy Cost",
-        "hours": "Theoretical Hours/Year",
-        "market_tol": "Market Tolerance (±%)",
-        "header_comp": "Line Comparison",
-        "line_a": "Line A (Standard)",
-        "line_b": "Line Premium",
-        "capex": "Investment",
-        "output": "Output (kg/h)",
-        "cons": "Consumption (kWh/kg)",
-        "precision": "2σ Precision (±%)",
-        "maint": "Maint. (%)",
-        "oee": "OEE Efficiency (%)",
-        "scrap": "Scrap Rate (%)",
-        "res_title": "🏁 ROI Analysis Results",
-        "tech_comp": "📊 Comparative Performance & Differences",
-        "extra_margin": "Extra Annual Margin",
+        "title": "ROI Extrusion",
+        "line_a": "Standard Line",
+        "line_b": "Premium Line",
+        "res_title": "ROI Analysis Results",
+        "tech_comp": "Comparative Performance & Indicators",
+        "download_pdf": "Download Rich Strategic Report (PDF)",
+        "extra_tons": "Extra Tons/Year",
         "payback": "Payback (Years)",
-        "cost_kg": "Prod. Cost per KG",
-        "profit_5y": "Extra Profit (5y)",
-        "extra_tons": "Extra Yearly Production",
-        "annual_prod": "Annual Net Production",
-        "info_msg": "💡 Premium Line produces {:.0f} extra Tons/year and saves {} {:.3f} per KG.",
-        "download_pdf": "📩 Download PDF Report",
-        "diff_col": "Difference (Premium vs A)"
+        "profit_5y": "5y Extra Profit",
+        "cost_kg": "Prod. Cost per KG"
     },
     "Italiano": {
-        "title": "ROI Extrusion Multi-Lang",
-        "sidebar_market": "Parametri Mercato",
-        "currency_settings": "Impostazioni Valuta",
-        "exchange_rate": "Tasso di Cambio (1€ = X $)",
-        "poly_cost": "Costo Polimero",
-        "sell_price": "Prezzo Vendita",
-        "energy_cost": "Costo Energia",
-        "hours": "Ore Teoriche/Anno",
-        "market_tol": "Tolleranza Mercato (±%)",
-        "header_comp": "Confronto Linee",
-        "line_a": "Linea A (Standard)",
+        "title": "ROI Extrusion",
+        "line_a": "Linea Standard",
         "line_b": "Linea Premium",
-        "capex": "Investimento",
-        "output": "Portata (kg/h)",
-        "cons": "Consumo (kWh/kg)",
-        "precision": "Precisione 2σ (±%)",
-        "maint": "Manutenzione (%)",
-        "oee": "OEE - Efficienza (%)",
-        "scrap": "Percentuale Scarto (%)",
-        "res_title": "🏁 Risultati Analisi ROI",
-        "tech_comp": "📊 Comparazione Performance e Differenze",
-        "extra_margin": "Extra Margine Annuo",
+        "res_title": "Risultati Analisi ROI",
+        "tech_comp": "Comparazione Performance e Indicatori",
+        "download_pdf": "Scarica Report Strategico Avanzato (PDF)",
+        "extra_tons": "Tonnellate Extra/Anno",
         "payback": "Pareggio (Anni)",
-        "cost_kg": "Costo al KG",
         "profit_5y": "Extra Profitto (5 anni)",
-        "extra_tons": "Tonnellate Extra / Anno",
-        "annual_prod": "Produzione Annua Netta",
-        "info_msg": "💡 La Linea Premium produce {:.0f} Tonnellate extra all'anno e risparmia {} {:.3f} al KG.",
-        "download_pdf": "📩 Scarica Report PDF",
-        "diff_col": "Differenza (Premium vs A)"
-    },
-    "Deutsch": { "title": "ROI Extrusion Multi-Lang", "line_a": "Linie A", "line_b": "Premium-Linie", "extra_tons": "Zusatzliche T/Jahr" },
-    "Español": { "title": "ROI Extrusion Multi-Lang", "line_a": "Linea A", "line_b": "Linea Premium", "extra_tons": "Toneladas Extra/Ano" }
+        "cost_kg": "Costo al KG"
+    }
 }
 
-st.set_page_config(page_title="ROI Extrusion Multi-Lang", layout="wide")
-
-# --- SELETTORE LINGUA ---
-lingua = st.sidebar.selectbox("Language / Lingua", ["English", "Italiano", "Deutsch", "Español"])
+st.set_page_config(page_title="ROI Extrusion", layout="wide")
+lingua = st.sidebar.selectbox("Lingua/Language", ["Italiano", "English"])
 t = lang_dict[lingua]
 
-# --- CURRENCY ---
-st.sidebar.divider()
-valuta_sel = st.sidebar.radio(t.get('currency_settings', 'Currency'), ["EUR", "USD"])
-cambio = 1.0; simbolo = "EUR"; val_code = "EUR"
-if valuta_sel == "USD":
-    cambio = st.sidebar.number_input(t.get('exchange_rate', 'Rate'), value=1.08)
-    simbolo = "USD"; val_code = "USD"
-
-# --- INPUT MERCATO ---
-st.sidebar.header(t['sidebar_market'])
-c_poly = st.sidebar.number_input(f"{t['poly_cost']} ({simbolo})", value=1.40 * cambio) / cambio
-p_sell = st.sidebar.number_input(f"{t['sell_price']} ({simbolo})", value=2.10 * cambio) / cambio
-c_ene = st.sidebar.number_input(f"{t['energy_cost']} ({simbolo})", value=0.22 * cambio) / cambio
-h_an = st.sidebar.number_input(t['hours'], value=8000)
-tol_m = st.sidebar.slider(t['market_tol'], 1.0, 10.0, 6.0)
-
-# --- COMPARISON ---
 st.title(t['title'])
-col_a, col_p = st.columns(2)
 
+# --- SIDEBAR CURRENCY & MARKET ---
+valuta_sel = st.sidebar.radio("Valuta/Currency", ["EUR", "USD"])
+cambio = 1.0; simbolo = "EUR"
+if valuta_sel == "USD":
+    cambio = st.sidebar.number_input("Tasso Cambio (1€ = X $)", value=1.08)
+    simbolo = "USD"
+
+st.sidebar.divider()
+c_poly = st.sidebar.number_input(f"Costo Polimero ({simbolo}/kg)", value=1.40 * cambio) / cambio
+p_sell = st.sidebar.number_input(f"Prezzo Vendita ({simbolo}/kg)", value=2.10 * cambio) / cambio
+c_ene = st.sidebar.number_input(f"Costo Energia ({simbolo}/kWh)", value=0.22 * cambio) / cambio
+h_an = st.sidebar.number_input("Ore Operative/Anno", value=8000)
+tol_m = st.sidebar.slider("Tolleranza Mercato (±%)", 1.0, 10.0, 6.0)
+
+# --- INPUT COMPARAZIONE ---
+col_a, col_p = st.columns(2)
 with col_a:
-    st.subheader(t['line_a'])
-    ca = st.number_input(f"{t['capex']} A", value=1500000)
-    pa = st.number_input(f"{t['output']} A", value=400)
-    oa = st.number_input(f"{t['oee']} A", value=75.0)
-    sa = st.number_input(f"{t['precision']} A", value=4.5)
-    scra = st.number_input(f"{t['scrap']} A", value=4.0)
+    st.subheader(f"📊 {t['line_a']}")
+    ca = st.number_input("Investimento (CAPEX) Standard", value=1500000)
+    pa = st.number_input("Portata (kg/h) Standard", value=400)
+    oa = st.number_input("OEE (%) Standard", value=80.0)
+    sa = st.number_input("Precisione 2σ (%) Standard", value=4.5)
+    scra = st.number_input("Scarto (%) Standard", value=4.0)
     ma, csa = 3.5, 0.40
 
 with col_p:
-    st.subheader(t['line_b'])
-    cp = st.number_input(f"{t['capex']} Premium", value=2000000)
-    pp = st.number_input(f"{t['output']} Premium", value=440)
-    op = st.number_input(f"{t['oee']} Premium", value=85.0)
-    sp = st.number_input(f"{t['precision']} Premium", value=1.5)
-    scrp = st.number_input(f"{t['scrap']} Premium", value=1.5)
+    st.subheader(f"🚀 {t['line_b']}")
+    cp = st.number_input("Investimento (CAPEX) Premium", value=2000000)
+    pp = st.number_input("Portata (kg/h) Premium", value=440)
+    op = st.number_input("OEE (%) Premium", value=85.0)
+    sp = st.number_input("Precisione 2σ (%) Premium", value=1.5)
+    scrp = st.number_input("Scarto (%) Premium", value=1.5)
     mp, csp = 2.0, 0.35
 
-# --- CALCOLI ---
+# --- CALCOLI ROI ---
 ton_a = (pa * h_an * (oa/100) * (1 - scra/100)) / 1000
 ton_p = (pp * h_an * (op/100) * (1 - scrp/100)) / 1000
 diff_tons = ton_p - ton_a
 
-# OPEX & MARGINI
 opexa = (pa*h_an*(oa/100)*c_poly) + (pa*h_an*(oa/100)*csa*c_ene) + (ca*ma/100)
 opexp = (pp*h_an*(op/100)*c_poly*(1-(tol_m-sp)/100)) + (pp*h_an*(op/100)*csp*c_ene) + (cp*mp/100)
 
@@ -132,22 +85,21 @@ dmarg = margp - marga
 pbk = (cp - ca) / dmarg if dmarg > 0 else 0
 p5y = (dmarg * 5) - (cp - ca)
 
-# --- TABELLA COMPARATIVA ---
+# --- VISUALIZZAZIONE ---
 st.subheader(t['tech_comp'])
-data = {
-    "Parameter": [t['annual_prod'], t['oee'], t['scrap'], t['cost_kg'], "Annual Margin"],
+data_table = {
+    "Parametro": [t['annual_prod'], "OEE", "Scarto", t['cost_kg'], "Margine Annuo"],
     t['line_a']: [f"{ton_a:,.0f} T", f"{oa}%", f"{scra}%", f"{simbolo} {ckga*cambio:.3f}", f"{simbolo} {marga*cambio:,.0f}"],
     t['line_b']: [f"{ton_p:,.0f} T", f"{op}%", f"{scrp}%", f"{simbolo} {ckgp*cambio:.3f}", f"{simbolo} {margp*cambio:,.0f}"],
-    t['diff_col']: [f"📈 +{diff_tons:,.0f} T", f"✅ +{op-oa}%", f"📉 {scrp-scra}%", f"✅ -{simbolo} {(ckga-ckgp)*cambio:.3f}", f"🔥 +{simbolo} {dmarg*cambio:,.0f}"]
+    "Differenza": [f"+{diff_tons:,.0f} T", f"+{op-oa}%", f"-{scra-scrp}%", f"-{simbolo} {(ckga-ckgp)*cambio:.3f}", f"+{simbolo} {dmarg*cambio:,.0f}"]
 }
-st.table(pd.DataFrame(data))
+st.table(pd.DataFrame(data_table))
 
-# --- KPI & GRAFICO ---
 st.header(t['res_title'])
 k1, k2, k3, k4 = st.columns(4)
-k1.metric(t['extra_margin'], f"{simbolo} {dmarg*cambio:,.0f}")
+k1.metric("Extra Margine/Anno", f"{simbolo} {dmarg*cambio:,.0f}")
 k2.metric(t['extra_tons'], f"+{diff_tons:,.0f} T")
-k3.metric(t['payback'], f"{pbk:.1f} Yrs")
+k3.metric(t['payback'], f"{pbk:.1f} Anni")
 k4.metric(t['profit_5y'], f"{simbolo} {p5y*cambio:,.0f}")
 
 # GRAFICO PAYBACK
@@ -158,23 +110,55 @@ fig = go.Figure()
 fig.add_trace(go.Scatter(x=yrs, y=fa, name=t['line_a'], line=dict(color='gray', dash='dot')))
 fig.add_trace(go.Scatter(x=yrs, y=fp, name=t['line_b'], line=dict(color='#00CC96', width=4)))
 fig.add_hline(y=0, line_color="black")
-fig.update_layout(title="Payback Strategy: Cumulative Cash Flow", xaxis_title="Years", yaxis_title=simbolo)
+fig.update_layout(title="Analisi Cumulativa Cash Flow (Payback)", xaxis_title="Anni", yaxis_title=simbolo)
 st.plotly_chart(fig, use_container_width=True)
 
-# --- PDF GENERATOR (Safe Mode) ---
-def make_pdf():
+# --- PDF GENERATOR ARRICCHITO ---
+def create_rich_pdf():
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(190, 10, "STRATEGIC ROI REPORT", ln=True, align='C')
+    pdf.cell(190, 10, "ROI EXTRUSION - STRATEGIC REPORT", ln=True, align='C')
     pdf.ln(10)
-    pdf.set_font("Arial", "", 12)
-    pdf.cell(100, 10, f"Payback Period: {pbk:.1f} Years")
-    pdf.cell(100, 10, f"5-Year Extra Profit: {simbolo} {p5y*cambio:,.0f}", ln=True)
-    pdf.cell(100, 10, f"Extra Production: {diff_tons:,.0f} Tons/Year")
-    pdf.ln(10)
-    pdf.multi_cell(180, 8, f"Conclusion: The Premium Line generates {simbolo} {dmarg*cambio:,.0f} extra margin per year by reducing scrap and increasing OEE.")
+
+    # Sezione 1: Sintesi Finanziaria
+    pdf.set_font("Arial", "B", 12)
+    pdf.set_fill_color(230, 230, 230)
+    pdf.cell(190, 10, " 1. FINANCIAL INDICATORS (" + simbolo + ")", ln=True, fill=True)
+    pdf.set_font("Arial", "", 11)
+    pdf.cell(95, 10, f"Extra Margin / Year: {simbolo} {dmarg*cambio:,.0f}", 1)
+    pdf.cell(95, 10, f"Payback Period: {pbk:.1f} Years", 1, 1)
+    pdf.cell(95, 10, f"5-Year Extra Profit: {simbolo} {p5y*cambio:,.0f}", 1)
+    pdf.cell(95, 10, f"Extra Tons / Year: {diff_tons:,.0f} T", 1, 1)
+    pdf.ln(5)
+
+    # Sezione 2: Parametri Tecnici
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(190, 10, " 2. TECHNICAL PERFORMANCE COMPARISON", ln=True, fill=True)
+    pdf.set_font("Arial", "B", 10)
+    pdf.cell(60, 10, "Metric", 1); pdf.cell(65, 10, "Standard Line", 1); pdf.cell(65, 10, "Premium Line", 1, 1)
+    pdf.set_font("Arial", "", 10)
+    rows = [
+        ("Annual Net Production", f"{ton_a:,.0f} T", f"{ton_p:,.0f} T"),
+        ("Scrap Rate", f"{scra}%", f"{scrp}%"),
+        ("OEE Efficiency", f"{oa}%", f"{op}%"),
+        ("Production Cost/KG", f"{ckga*cambio:.3f}", f"{ckgp*cambio:.3f}")
+    ]
+    for r in rows:
+        pdf.cell(60, 10, r[0], 1); pdf.cell(65, 10, r[1], 1); pdf.cell(65, 10, r[2], 1, 1)
+    pdf.ln(5)
+
+    # Sezione 3: Performance Drivers
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(190, 10, " 3. PERFORMANCE DRIVERS & MOTIVATIONS", ln=True, fill=True)
+    pdf.set_font("Arial", "", 10)
+    pdf.ln(2)
+    drivers = (f"- RAW MATERIAL SAVING: The 2-sigma precision of {sp}% reduces over-thickness compared to {sa}%.\n"
+               f"- OPERATIONAL EFFICIENCY: Premium line OEE ({op}%) minimizes downtime and maximizes output.\n"
+               f"- UNIT COST OPTIMIZATION: Saving of {simbolo} {(ckga-ckgp)*cambio:.3f} per kg produced.")
+    pdf.multi_cell(190, 8, drivers)
+    
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
 if st.button(t['download_pdf']):
-    st.download_button("Save Report PDF", data=make_pdf(), file_name="ROI_Premium.pdf", mime="application/pdf")
+    st.download_button("Salva Report Strategico PDF", data=create_rich_pdf(), file_name="ROI_Extrusion_Report.pdf", mime="application/pdf")
