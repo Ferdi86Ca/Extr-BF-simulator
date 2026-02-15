@@ -96,13 +96,11 @@ with col_b:
     scrb = st.number_input(f"{t['scrap']} B", value=1.5, key="b7")
 
 # --- CALCOLI ---
-# Produzione
 pra = pa * h_an * (oa/100)
 prb = pb * h_an * (ob/100)
 neta = pra * (1 - scra/100)
 netb = prb * (1 - scrb/100)
 
-# Opex
 mata = pra * c_pe
 matb = prb * c_pe * (1 - (tol_m - sb)/100)
 enea = pra * csa * c_en
@@ -113,7 +111,6 @@ mntb = cb * (mb/100)
 opexa = mata + enea + mnta
 opexb = matb + eneb + mntb
 
-# Metriche
 ckga = (opexa + (ca/10)) / neta if neta > 0 else 0
 ckgb = (opexb + (cb/10)) / netb if netb > 0 else 0
 marga = (neta * p_ve) - opexa
@@ -138,11 +135,29 @@ else:
 
     # TCO PIE CHARTS
     st.subheader(t['tco_title'])
-    
     lbls = ['Investment', 'Material', 'Energy', 'Maintenance']
-    vals_a = [ca, mata*10, enea*10, mnta*10]
-    vals_b = [cb, matb*10, eneb*10, mntb*10]
-
+    
     ga, gb = st.columns(2)
     with ga:
-        fig1 = go.Figure(data=[go.Pie
+        fig1 = go.Figure(data=[go.Pie(labels=lbls, values=[ca, mata*10, enea*10, mnta*10], hole=.4)])
+        fig1.update_layout(title=t['line_a'], showlegend=True)
+        st.plotly_chart(fig1, use_container_width=True)
+    with gb:
+        fig2 = go.Figure(data=[go.Pie(labels=lbls, values=[cb, matb*10, eneb*10, mntb*10], hole=.4)])
+        fig2.update_layout(title=t['line_b'], showlegend=True)
+        st.plotly_chart(fig2, use_container_width=True)
+
+    # CASH FLOW
+    yrs = list(range(11))
+    fa = [-ca + (marga * i) for i in yrs]
+    fb = [-cb + (margb * i) for i in yrs]
+    
+    fig3 = go.Figure()
+    fig3.add_trace(go.Scatter(x=yrs, y=fa, name=t['line_a'], line=dict(color='gray', dash='dot')))
+    fig3.add_trace(go.Scatter(x=yrs, y=fb, name=t['line_b'], line=dict(color='#00CC96', width=4)))
+    fig3.add_hline(y=0)
+    fig3.update_layout(title="Cash Flow Cumulative", xaxis_title="Years", yaxis_title="€")
+    st.plotly_chart(fig3, use_container_width=True)
+
+    report = f"ROI Analysis\nExtra Profit 5y: € {p5y:,.0f}\nCost/kg B: {ckgb:.3f} €"
+    st.download_button(t['download_btn'], report, file_name="report.txt")
