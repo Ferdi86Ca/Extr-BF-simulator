@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 st.set_page_config(page_title="ROI Estrusione Pro", layout="centered")
 
 st.title("📊 Simulatore ROI Film in Bolla")
-st.write("Confronto tecnico-economico avanzato")
+st.write("Analisi tecnica e profitto cumulativo a 5 anni")
 
 # --- SIDEBAR: PARAMETRI GENERALI ---
 st.sidebar.header("Parametri Generali")
@@ -54,22 +54,30 @@ margine_extra_totale = risparmio_mat_annuo + risparmio_energia_annuo + extra_ric
 delta_investimento = capex_b - capex_a
 payback = delta_investimento / margine_extra_totale if margine_extra_totale > 0 else 0
 
+# 5. Profitto Extra Totale a 5 Anni
+# Calcolato come: (Risparmio Annuo * 5) - Extra Investimento Iniziale
+profitto_5_anni = (margine_extra_totale * 5) - delta_investimento
+
 # --- OUTPUT RISULTATI ---
 st.divider()
 st.subheader("🏁 Analisi del Ritorno (ROI)")
-c1, c2 = st.columns(2)
+c1, c2, c3 = st.columns(3)
 c1.metric("Margine Extra Annuo", f"€ {margine_extra_totale:,.0f}")
 c2.metric("Punto di Pareggio", f"{payback:.1f} Anni")
+c3.metric("Extra Profitto (5 anni)", f"€ {profitto_5_anni:,.0f}", delta=f"€ {profitto_5_anni:,.0f}")
+
+st.info(f"💡 Scegliendo la Linea B, dopo 5 anni avrai generato **€ {profitto_5_anni:,.0f}** di cassa extra rispetto alla Linea A, già dedotto il maggior costo d'acquisto.")
 
 # --- GRAFICO 1: RISPARMIO ACCUMULATO ---
 anni = [0, 1, 2, 3, 4, 5]
 risparmi_y = [margine_extra_totale * i for i in anni]
 fig1 = go.Figure()
 fig1.add_trace(go.Bar(x=anni[1:], y=risparmi_y[1:], name="Risparmio Extra", marker_color='#2ca02c'))
-fig1.add_hline(y=delta_investimento, line_dash="dash", line_color="red", annotation_text="Extra Costo Macchina B")
+fig1.add_hline(y=delta_investimento, line_dash="dash", line_color="red", annotation_text="Extra Costo Iniziale")
+fig1.update_layout(title="Risparmio Operativo Accumulato", xaxis_title="Anni", yaxis_title="Euro (€)")
 st.plotly_chart(fig1, use_container_width=True)
 
-# --- GRAFICO 2: BREAK-EVEN (CORRETTO) ---
+# --- GRAFICO 2: BREAK-EVEN ---
 st.subheader("📈 Cash-Flow: Linea A vs Linea B")
 margine_base_a = (prod_annua_a * (prezzo_vendita - costo_pe)) - costo_en_a
 margine_base_b = (prod_annua_b * (prezzo_vendita - costo_pe)) - costo_en_b + risparmio_mat_annuo
@@ -86,26 +94,21 @@ st.plotly_chart(fig2, use_container_width=True)
 
 # --- TASTO SCARICA REPORT ---
 st.divider()
-report_text = f"""REPORT SIMULAZIONE ROI
----------------------------
-DATI DI MERCATO:
-Costo Polimero: {costo_pe} €/kg
-Costo Energia: {costo_en} €/kWh
-Ore/Anno: {ore_anno}
+report_text = f"""REPORT SIMULAZIONE ROI ESTRUSIONE
+-----------------------------------
+EXTRA PROFITTO A 5 ANNI: € {profitto_5_anni:,.2f}
 
-RISULTATI CONFRONTO:
-Extra Investimento: € {delta_investimento:,.2f}
-Risparmio Annuo Totale: € {margine_extra_totale:,.2f}
-Payback Period: {payback:.1f} anni
+DATI DI CONFRONTO:
+- Extra Investimento: € {delta_investimento:,.2f}
+- Risparmio Annuo Operativo: € {margine_extra_totale:,.2f}
+- Payback Period Differenziale: {payback:.1f} anni
 
-VANTAGGI TECNICI LINEA B:
-- Risparmio polimero (Down-gauging): € {risparmio_mat_annuo:,.2f}
-- Risparmio energetico: € {risparmio_energia_annuo:,.2f}
+DETTAGLIO RISPARMI ANNUI:
+- Down-gauging (Precisione): € {risparmio_mat_annuo:,.2f}
+- Efficienza Energetica: € {risparmio_energia_annuo:,.2f}
+- Extra Produzione Venduta: € {extra_ricavo_produzione:,.2f}
+-----------------------------------
 """
 
 st.download_button(
-    label="📩 Scarica Report per il Cliente",
-    data=report_text,
-    file_name="report_roi_estrusione.txt",
-    mime="text/plain"
-)
+    label="📩 Scarica Report
