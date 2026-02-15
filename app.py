@@ -3,162 +3,157 @@ import plotly.graph_objects as go
 import pandas as pd
 from fpdf import FPDF
 
-# 1. TRADUZIONI
+# 1. DIZIONARIO TRADUZIONI (Completo: EN, IT, DE, ES)
 lang_dict = {
     "English": {
         "title": "ROI Extrusion Multi-Lang",
-        "sidebar_market": "Market Parameters",
-        "currency_settings": "Currency Settings",
-        "exchange_rate": "Exchange Rate (1€ = X $)",
-        "poly_cost": "Polymer Cost",
-        "sell_price": "Film Selling Price",
-        "energy_cost": "Energy Cost",
-        "hours": "Theoretical Hours/Year",
-        "market_tol": "Market Tolerance (±%)",
-        "header_comp": "Line Comparison",
         "line_a": "Line A (Standard)",
-        "line_b": "Line Premium",
-        "capex": "Investment",
-        "output": "Output (kg/h)",
-        "cons": "Consumption (kWh/kg)",
-        "precision": "2σ Precision (±%)",
-        "maint": "Maint. (%)",
-        "oee": "OEE Efficiency (%)",
-        "scrap": "Scrap Rate (%)",
+        "line_p": "Premium Line",
         "res_title": "ROI Analysis Results",
-        "tech_comp": "Comparative Performance Table",
-        "extra_margin": "Extra Annual Margin",
+        "extra_tons": "Extra Tons/Year",
         "payback": "Payback (Years)",
-        "cost_kg": "Prod. Cost per KG",
-        "profit_5y": "Extra Profit (5y)",
-        "extra_tons": "Extra Yearly Production",
-        "annual_prod": "Annual Net Production",
-        "download_pdf": "📩 Download PDF Report",
-        "diff_col": "Difference"
+        "profit_5y": "5y Extra Profit",
+        "download_pdf": "Download PDF Report"
     },
     "Italiano": {
         "title": "ROI Extrusion Multi-Lang",
-        "sidebar_market": "Parametri Mercato",
-        "currency_settings": "Impostazioni Valuta",
-        "exchange_rate": "Tasso di Cambio (1€ = X $)",
-        "poly_cost": "Costo Polimero",
-        "sell_price": "Prezzo Vendita",
-        "energy_cost": "Costo Energia",
-        "hours": "Ore Teoriche/Anno",
-        "market_tol": "Tolleranza Mercato (±%)",
-        "header_comp": "Confronto Linee",
         "line_a": "Linea A (Standard)",
-        "line_b": "Linea Premium",
-        "capex": "Investimento",
-        "output": "Portata (kg/h)",
-        "cons": "Consumo (kWh/kg)",
-        "precision": "Precisione 2σ (±%)",
-        "maint": "Manutenzione (%)",
-        "oee": "OEE - Efficienza (%)",
-        "scrap": "Percentuale Scarto (%)",
+        "line_p": "Linea Premium",
         "res_title": "Risultati Analisi ROI",
-        "tech_comp": "Tabella Comparativa Prestazioni",
-        "extra_margin": "Extra Margine Annuo",
+        "extra_tons": "Tonnellate Extra/Anno",
         "payback": "Pareggio (Anni)",
-        "cost_kg": "Costo al KG",
         "profit_5y": "Extra Profitto (5 anni)",
-        "extra_tons": "Tonnellate Extra / Anno",
-        "annual_prod": "Produzione Annua Netta",
-        "download_pdf": "📩 Scarica Report PDF",
-        "diff_col": "Differenza"
+        "download_pdf": "Scarica Report PDF"
+    },
+    "Deutsch": {
+        "title": "ROI Extrusion Multi-Lang",
+        "line_a": "Linie A (Standard)",
+        "line_p": "Premium-Linie",
+        "res_title": "ROI-Analyseergebnisse",
+        "extra_tons": "Zusatzliche Tonnen/Jahr",
+        "payback": "Amortisation (Jahre)",
+        "profit_5y": "Extra Profit (5 J.)",
+        "download_pdf": "PDF-Bericht herunterladen"
+    },
+    "Español": {
+        "title": "ROI Extrusion Multi-Lang",
+        "line_a": "Linea A (Estandar)",
+        "line_p": "Linea Premium",
+        "res_title": "Resultados del Analisis ROI",
+        "extra_tons": "Toneladas Extra/Ano",
+        "payback": "Retorno (Anos)",
+        "profit_5y": "Beneficio Extra (5a)",
+        "download_pdf": "Descargar Reporte PDF"
     }
 }
 
-# --- FUNZIONE PDF CORRETTA ---
-def create_pdf(data_dict, lang_t, simbolo_text, val_code, line_a, line_p):
+st.set_page_config(page_title="ROI Extrusion", layout="wide")
+
+# --- SIDEBAR: LINGUA E VALUTA ---
+st.sidebar.header("Settings")
+sel_lang = st.sidebar.selectbox("Language", ["English", "Italiano", "Deutsch", "Español"])
+t = lang_dict[sel_lang]
+
+valuta = st.sidebar.radio("Currency", ["EUR", "USD"])
+cambio = 1.08 if valuta == "USD" else 1.0
+simbolo = "$" if valuta == "USD" else "EUR"
+
+# --- INPUT PARAMETRI DI MERCATO ---
+st.sidebar.divider()
+st.sidebar.subheader("Market Data")
+c_poly = st.sidebar.number_input(f"Polymer Cost ({simbolo}/kg)", value=1.40 * cambio) / cambio
+p_sell = st.sidebar.number_input(f"Selling Price ({simbolo}/kg)", value=2.10 * cambio) / cambio
+c_energy = st.sidebar.number_input(f"Energy Cost ({simbolo}/kWh)", value=0.22 * cambio) / cambio
+hours = st.sidebar.number_input("Working Hours/Year", value=8000)
+tolerance = st.sidebar.slider("Market Tolerance (±%)", 1.0, 10.0, 6.0)
+
+# --- CORPO PRINCIPALE: COMPARAZIONE ---
+st.title(t['title'])
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader(t['line_a'])
+    ca = st.number_input("Investment A", value=1500000, step=50000)
+    pa = st.number_input("Output A (kg/h)", value=400)
+    oa = st.number_input("OEE A (%)", value=75.0)
+    sa = st.number_input("2-Sigma Precision A (%)", value=4.5)
+    scra = st.number_input("Scrap Rate A (%)", value=4.0)
+    ma, csa = 3.5, 0.40 # Maint % e Consumo kWh/kg
+
+with col2:
+    st.subheader(t['line_p'])
+    cp = st.number_input("Investment Premium", value=2000000, step=50000)
+    pp = st.number_input("Output Premium (kg/h)", value=440)
+    op = st.number_input("OEE Premium (%)", value=85.0)
+    sp = st.number_input("2-Sigma Precision Premium (%)", value=1.5)
+    scrp = st.number_input("Scrap Rate Premium (%)", value=1.5)
+    mp, csp = 2.0, 0.35
+
+# --- LOGICA CALCOLI ---
+# Produzione
+ton_a = (pa * hours * (oa/100) * (1 - scra/100)) / 1000
+ton_p = (pp * hours * (op/100) * (1 - scrp/100)) / 1000
+diff_tons = ton_p - ton_a
+
+# Costi Operativi (OPEX)
+pra, prp = pa * hours * (oa/100), pp * hours * (op/100)
+cost_mat_a = pra * c_poly
+cost_mat_p = prp * c_poly * (1 - (tolerance - sp)/100) # Risparmio grazie a precisione
+cost_ene_a = pra * csa * c_energy
+cost_ene_p = prp * csp * c_energy
+cost_maint_a = ca * (ma/100)
+cost_maint_p = cp * (mp/100)
+
+opex_a = cost_mat_a + cost_ene_a + cost_maint_a
+opex_p = cost_mat_p + cost_ene_p + cost_maint_p
+
+# Margini e ROI
+marga = (ton_a * 1000 * p_sell) - opex_a
+margp = (ton_p * 1000 * p_sell) - opex_p
+dmarg = margp - marga
+pbk = (cp - ca) / dmarg if dmarg > 0 else 0
+p5y = (dmarg * 5) - (cp - ca)
+saving_kg = (opex_a/ (ton_a*1000)) - (opex_p/ (ton_p*1000)) if ton_a > 0 else 0
+
+# --- VISUALIZZAZIONE RISULTATI ---
+st.divider()
+st.header(t['res_title'])
+k1, k2, k3, k4 = st.columns(4)
+k1.metric("Extra Margin/Year", f"{simbolo} {dmarg*cambio:,.0f}")
+k2.metric(t['extra_tons'], f"+{diff_tons:,.0f} T")
+k3.metric(t['payback'], f"{pbk:.1f} Yrs")
+k4.metric(t['profit_5y'], f"{simbolo} {p5y*cambio:,.0f}")
+
+# --- TABELLA TECNICA ---
+st.subheader("Technical Details")
+df_data = {
+    "Metric": ["Annual Production", "Scrap Rate", "OEE Efficiency", "Specific Consumption"],
+    t['line_a']: [f"{ton_a:,.0f} Tons", f"{scra}%", f"{oa}%", f"{csa} kWh/kg"],
+    t['line_p']: [f"{ton_p:,.0f} Tons", f"{scrp}%", f"{op}%", f"{csp} kWh/kg"],
+    "Improvement": [f"+{diff_tons:,.0f} Tons", f"-{scra-scrp}%", f"+{op-oa}%", f"-{csa-csp:.2f}"]
+}
+st.table(pd.DataFrame(df_data))
+
+# --- GENERAZIONE PDF ---
+def make_pdf():
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(190, 10, txt=lang_t['title'], ln=True, align='C')
-    pdf.ln(5)
-    
-    # Sezione Economica
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(190, 10, txt=lang_t['res_title'].upper(), ln=True, fill=False)
-    pdf.set_font("Arial", "", 10)
-    
-    metrics = [
-        (lang_t['extra_margin'], f"{simbolo_text} {data_dict['dmarg']:,.0f}"),
-        (lang_t['extra_tons'], f"{data_dict['diff_tons']:,.0f} T/y"),
-        (lang_t['payback'], f"{data_dict['pbk']:.1f} Yrs"),
-        (lang_t['profit_5y'], f"{simbolo_text} {data_dict['p5y']:,.0f}")
-    ]
-    
-    for m in metrics:
-        pdf.cell(95, 8, m[0], 1)
-        pdf.cell(95, 8, m[1], 1, 1, 'C')
-    
+    pdf.cell(190, 10, "ROI ANALYSIS: STANDARD VS PREMIUM", ln=True, align='C')
     pdf.ln(10)
-    
-    # Tabella Tecnica
+    pdf.set_font("Arial", "", 12)
+    pdf.cell(100, 10, f"Currency: {valuta}")
+    pdf.cell(100, 10, f"Payback: {pbk:.1f} Years", ln=True)
+    pdf.cell(100, 10, f"Extra Profit 5y: {simbolo} {p5y*cambio:,.0f}")
+    pdf.cell(100, 10, f"Extra Tons/Year: {diff_tons:,.0f} T", ln=True)
+    pdf.ln(10)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(190, 10, txt=lang_t['tech_comp'].upper(), ln=True)
-    pdf.set_font("Arial", "B", 9)
-    pdf.cell(60, 10, "Parameter", 1, 0, 'C')
-    pdf.cell(65, 10, lang_t['line_a'], 1, 0, 'C')
-    pdf.cell(65, 10, lang_t['line_b'], 1, 1, 'C')
-    
-    pdf.set_font("Arial", "", 9)
-    tech_rows = [
-        (lang_t['annual_prod'], f"{line_a['tons']:,.0f} T", f"{line_p['tons']:,.0f} T"),
-        (lang_t['scrap'], f"{line_a['scr']}%", f"{line_p['scr']}%"),
-        (lang_t['oee'], f"{line_a['oee']}%", f"{line_p['oee']}%"),
-        (lang_t['cost_kg'], f"{simbolo_text} {line_a['ckg']:.3f}", f"{simbolo_text} {line_p['ckg']:.3f}")
-    ]
-    
-    for r in tech_rows:
-        pdf.cell(60, 8, r[0], 1)
-        pdf.cell(65, 8, r[1], 1, 0, 'C')
-        pdf.cell(65, 8, r[2], 1, 1, 'C')
-
+    pdf.cell(190, 10, "Strategic Conclusion", ln=True)
+    pdf.set_font("Arial", "", 11)
+    msg = f"The Premium Line reduces cost per kg and increases production by {diff_tons:,.0f} tons."
+    pdf.multi_cell(180, 8, msg)
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
-# --- UI STREAMLIT ---
-st.set_page_config(page_title="ROI Extrusion", layout="wide")
-lingua = st.sidebar.selectbox("Language", ["English", "Italiano"])
-t = lang_dict[lingua]
-
-# Currency logic
-valuta_sel = st.sidebar.radio("Currency", ["EUR", "USD"])
-cambio = 1.0; simbolo_text = "EUR"
-if valuta_sel == "USD":
-    cambio = st.sidebar.number_input(t['exchange_rate'], value=1.08)
-    simbolo_text = "USD"
-
-# Input
-col_a, col_p = st.columns(2)
-with col_a:
-    st.subheader(t['line_a'])
-    ca = st.number_input(f"CAPEX A", value=1500000)
-    pa = 400; oa = 75.0; scra = 4.0
-with col_p:
-    st.subheader(t['line_b'])
-    cp = st.number_input(f"CAPEX Premium", value=2000000)
-    pp = 440; op = 85.0; scrp = 1.5
-
-# Calcoli semplificati per test
-ton_a = (pa * 8000 * (oa/100) * (1 - scra/100)) / 1000
-ton_p = (pp * 8000 * (op/100) * (1 - scrp/100)) / 1000
-dmarg = (ton_p - ton_a) * 1000 * 0.5 # Esempio margine
-p5y = (dmarg * 5) - (cp - ca)
-pbk = (cp - ca) / dmarg if dmarg > 0 else 0
-
-# Display
-st.divider()
-c1, c2, c3 = st.columns(3)
-c1.metric(t['extra_margin'], f"{simbolo_text} {dmarg*cambio:,.0f}")
-c2.metric(t['extra_tons'], f"{ton_p - ton_a:,.0f} T")
-c3.metric(t['payback'], f"{pbk:.1f} Yrs")
-
-# PDF Data Preparation
-l_a_data = {'tons': ton_a, 'scr': scra, 'oee': oa, 'ckg': 1.20} # Valori esempio
-l_p_data = {'tons': ton_p, 'scr': scrp, 'oee': op, 'ckg': 1.15}
-
 if st.button(t['download_pdf']):
-    pdf_bytes = create_pdf({'dmarg': dmarg*cambio, 'diff_tons': ton_p-ton_a, 'pbk': pbk, 'p5y': p5y*cambio}, t, simbolo_text, valuta_sel, l_a_data, l_p_data)
-    st.download_button("Click here to save PDF", data=pdf_bytes, file_name="ROI_Report.pdf", mime="application/pdf")
+    pdf_out = make_pdf()
+    st.download_button("Click to Download", data=pdf_out, file_name="ROI_Report.pdf", mime="application/pdf")
