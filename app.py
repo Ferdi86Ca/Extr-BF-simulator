@@ -1,5 +1,6 @@
 import streamlit as st
 import plotly.graph_objects as go
+import pandas as pd
 
 # 1. TRADUZIONI
 lang_dict = {
@@ -21,6 +22,7 @@ lang_dict = {
         "oee": "OEE (%)",
         "scrap": "Scrap (%)",
         "res_title": "🏁 ROI & TCO Analysis",
+        "tech_comp": "📊 Comparative Analysis",
         "extra_margin": "Extra Annual Margin",
         "payback": "Break-even (Years)",
         "cost_kg": "Prod. Cost per KG",
@@ -47,6 +49,7 @@ lang_dict = {
         "oee": "OEE (%)",
         "scrap": "Scarto (%)",
         "res_title": "🏁 Analisi ROI & TCO",
+        "tech_comp": "📊 Analisi Comparativa",
         "extra_margin": "Extra Margine Annuo",
         "payback": "Pareggio (Anni)",
         "cost_kg": "Costo al KG",
@@ -59,7 +62,6 @@ lang_dict = {
 
 st.set_page_config(page_title="ROI Extrusion", layout="wide")
 
-# Selezione Lingua
 lingua = st.sidebar.selectbox("Language / Lingua", ["English", "Italiano"])
 t = lang_dict[lingua]
 
@@ -119,8 +121,28 @@ dmarg = margb - marga
 pbk = (cb - ca) / dmarg if dmarg > 0 else 0
 p5y = (dmarg * 5) - (cb - ca)
 
-# --- DISPLAY RISULTATI ---
+# --- TABELLA COMPARATIVA ---
 st.markdown("---")
+st.subheader(t['tech_comp'])
+
+data = {
+    "Parameter": [t['capex'], t['output'], t['oee'], t['scrap'], t['cons'], t['cost_kg'], "Annual Margin"],
+    t['line_a']: [f"€ {ca:,.0f}", f"{pa} kg/h", f"{oa}%", f"{scra}%", f"{csa} kWh/kg", f"€ {ckga:.3f}", f"€ {marga:,.0f}"],
+    t['line_b']: [f"€ {cb:,.0f}", f"{pb} kg/h", f"{ob}%", f"{scrb}%", f"{csb} kWh/kg", f"€ {ckgb:.3f}", f"€ {margb:,.0f}"],
+    "Difference (B-A)": [
+        f"€ {cb-ca:,.0f}", 
+        f"+{pb-pa} kg/h", 
+        f"+{ob-oa}%", 
+        f"{scrb-scra}%", 
+        f"{csb-csa:.2f} kWh/kg", 
+        f"€ {ckgb-ckga:.3f}", 
+        f"€ {dmarg:,.0f}"
+    ]
+}
+df = pd.DataFrame(data)
+st.table(df)
+
+# --- DISPLAY RISULTATI ROI ---
 st.title(t['res_title'])
 
 if dmarg <= 0:
@@ -128,26 +150,25 @@ if dmarg <= 0:
 else:
     c1, c2, c3 = st.columns(3)
     c1.metric(t['extra_margin'], f"€ {dmarg:,.0f}")
-    c2.metric(t['cost_kg'] + " (B)", f"€ {ckgb:.3f}", delta=f"{ckgb-ckga:.3f}", delta_color="inverse")
+    c2.metric(t['payback'], f"{pbk:.1f} Years")
     c3.metric(t['profit_5y'], f"€ {p5y:,.0f}")
 
     st.info(t['info_msg'].format(ckga - ckgb, p5y))
 
-    # TCO PIE CHARTS
+    # TCO E CASH FLOW
     st.subheader(t['tco_title'])
     lbls = ['Investment', 'Material', 'Energy', 'Maintenance']
     
     ga, gb = st.columns(2)
     with ga:
         fig1 = go.Figure(data=[go.Pie(labels=lbls, values=[ca, mata*10, enea*10, mnta*10], hole=.4)])
-        fig1.update_layout(title=t['line_a'], showlegend=True)
+        fig1.update_layout(title=t['line_a'], height=350)
         st.plotly_chart(fig1, use_container_width=True)
     with gb:
         fig2 = go.Figure(data=[go.Pie(labels=lbls, values=[cb, matb*10, eneb*10, mntb*10], hole=.4)])
-        fig2.update_layout(title=t['line_b'], showlegend=True)
+        fig2.update_layout(title=t['line_b'], height=350)
         st.plotly_chart(fig2, use_container_width=True)
 
-    # CASH FLOW
     yrs = list(range(11))
     fa = [-ca + (marga * i) for i in yrs]
     fb = [-cb + (margb * i) for i in yrs]
@@ -158,6 +179,3 @@ else:
     fig3.add_hline(y=0)
     fig3.update_layout(title="Cash Flow Cumulative", xaxis_title="Years", yaxis_title="€")
     st.plotly_chart(fig3, use_container_width=True)
-
-    report = f"ROI Analysis\nExtra Profit 5y: € {p5y:,.0f}\nCost/kg B: {ckgb:.3f} €"
-    st.download_button(t['download_btn'], report, file_name="report.txt")
