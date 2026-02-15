@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 import pandas as pd
 from fpdf import FPDF
 
-# 1. DIZIONARIO TRADUZIONI COMPLETO (Ordine invertito: EN prima)
+# 1. DIZIONARIO TRADUZIONI COMPLETO
 lang_dict = {
     "English": {
         "title": "ROI Extrusion",
@@ -81,7 +81,6 @@ lang_dict = {
 
 st.set_page_config(page_title="ROI Extrusion", layout="wide")
 
-# Selezione Lingua (English Default)
 lingua = st.sidebar.selectbox("Language / Lingua / Sprache / Idioma", ["English", "Italiano", "Deutsch", "Español"])
 t = lang_dict[lingua]
 
@@ -146,8 +145,24 @@ df_vis = pd.DataFrame({
 })
 st.table(df_vis)
 
-# --- GRAFICO PAYBACK ---
+# --- SEZIONE ROI OTTIMIZZATA ---
 st.header(t['res_title'])
+with st.container():
+    c1, c2, c3, c4 = st.columns(4)
+    # Utilizzo di HTML per enfatizzare i valori senza rompere il codice
+    c1.markdown(f"### <span style='color:#00CC96'>{simbolo} {dmarg*cambio:,.0f}</span>", unsafe_allow_html=True)
+    c1.caption(f"**{t['margin_yr']} Extra**")
+    
+    c2.markdown(f"### <span style='color:#00CC96'>+{diff_tons:,.0f} T</span>", unsafe_allow_html=True)
+    c2.caption(f"**{t['extra_tons']}**")
+    
+    c3.markdown(f"### <span style='color:#FF4B4B'>{pbk:.1f} Yrs</span>", unsafe_allow_html=True)
+    c3.caption(f"**{t['payback']}**")
+    
+    c4.markdown(f"### <span style='color:#00CC96'>{simbolo} {p5y*cambio:,.0f}</span>", unsafe_allow_html=True)
+    c4.caption(f"**{t['profit_5y']}**")
+
+# --- GRAFICO PAYBACK ---
 yrs = list(range(11))
 fa = [(-ca + (marga * i)) * cambio for i in yrs]
 fp = [(-cp + (margp * i)) * cambio for i in yrs]
@@ -162,21 +177,17 @@ st.divider()
 st.subheader(t['notes_label'])
 meeting_notes = st.text_area("", placeholder=t['notes_placeholder'], height=150)
 
-# --- PDF GENERATOR ---
+# --- PDF GENERATOR (Invariato) ---
 def create_pdf():
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
     pdf.cell(190, 10, "ROI EXTRUSION - STRATEGIC REPORT", ln=True, align='C')
     pdf.ln(5)
-    
-    # 1. Market Data
     pdf.set_font("Arial", "B", 12); pdf.set_fill_color(240, 240, 240)
     pdf.cell(190, 10, " 1. MARKET DATA", ln=True, fill=True)
     pdf.set_font("Arial", "", 10)
     pdf.cell(95, 8, f"Polymer: {c_poly*cambio:,.2f} {simbolo}/kg", 1); pdf.cell(95, 8, f"Energy: {c_ene*cambio:,.2f} {simbolo}/kWh", 1, 1)
-    
-    # 2. Technical Data
     pdf.ln(5); pdf.set_font("Arial", "B", 12)
     pdf.cell(190, 10, " 2. TECHNICAL SPECIFICATIONS", ln=True, fill=True)
     pdf.set_font("Arial", "B", 9)
@@ -186,20 +197,15 @@ def create_pdf():
     pdf.cell(60, 8, "OEE Efficiency", 1); pdf.cell(65, 8, f"{oa}%", 1); pdf.cell(65, 8, f"{op}%", 1, 1)
     pdf.cell(60, 8, "Scrap Rate", 1); pdf.cell(65, 8, f"{scra}%", 1); pdf.cell(65, 8, f"{scrp}%", 1, 1)
     pdf.cell(60, 8, "2-Sigma Precision", 1); pdf.cell(65, 8, f"{sa}%", 1); pdf.cell(65, 8, f"{sp}%", 1, 1)
-    
-    # 3. Results
     pdf.ln(5); pdf.set_font("Arial", "B", 12)
     pdf.cell(190, 10, " 3. ROI SUMMARY", ln=True, fill=True)
     pdf.set_font("Arial", "", 10)
     pdf.cell(95, 10, f"Payback Time: {pbk:.1f} Years", 1); pdf.cell(95, 10, f"5-Year Profit: {p5y*cambio:,.0f} {simbolo}", 1, 1)
-    
-    # 4. Meeting Notes
     if meeting_notes:
         pdf.ln(5); pdf.set_font("Arial", "B", 12)
         pdf.cell(190, 10, " 4. MEETING NOTES", ln=True, fill=True)
         pdf.set_font("Arial", "", 10)
         pdf.multi_cell(190, 8, meeting_notes, 1)
-    
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
 st.divider()
