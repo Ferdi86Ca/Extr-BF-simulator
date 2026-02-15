@@ -100,7 +100,7 @@ c_ene = st.sidebar.number_input(f"Energy Cost ({simbolo}/kWh)", value=0.22 * cam
 h_an = st.sidebar.number_input("Hours/Year", value=8000)
 tol_m = st.sidebar.slider("Market Tol. (±%)", 1.0, 10.0, 6.0)
 
-# --- INPUT COMPARAZIONE ---
+# --- INPUT COMPARAZIONE (Con Manutenzione Editabile) ---
 col_a, col_p = st.columns(2)
 with col_a:
     st.subheader(f"⚪ {t['line_a']}")
@@ -109,8 +109,7 @@ with col_a:
     oa = st.number_input("OEE (%) Standard", value=83.0)
     sa = st.number_input("2-Sigma (%) Standard", value=3.5)
     scra = st.number_input("Scrap (%) Standard", value=2.0)
-    # Parametri Manutenzione Standard
-    ma_std = 2.5
+    ma_std = st.number_input("Maint. Cost (% CAPEX) Std", value=2.5)
     csa = 0.40
 
 with col_p:
@@ -120,16 +119,14 @@ with col_p:
     op = st.number_input("OEE (%) Premium", value=87.0)
     sp = st.number_input("2-Sigma (%) Premium", value=1.5)
     scrp = st.number_input("Scrap (%) Premium", value=1.5)
-    # Parametri Manutenzione Premium
-    mp_pre = 1.5
+    mp_pre = st.number_input("Maint. Cost (% CAPEX) Prem", value=1.5)
     csp = 0.35
 
-# --- CALCOLI (Inclusi costi manutenzione differenziati) ---
+# --- CALCOLI ---
 ton_a = (pa * h_an * (oa/100) * (1 - scra/100)) / 1000
 ton_p = (pp * h_an * (op/100) * (1 - scrp/100)) / 1000
 diff_tons = ton_p - ton_a
 
-# OPEX: Mat. Prima + Energia + Manutenzione (% CAPEX)
 opexa = (pa*h_an*(oa/100)*c_poly) + (pa*h_an*(oa/100)*csa*c_ene) + (ca*(ma_std/100))
 opexp = (pp*h_an*(op/100)*c_poly*(1-(tol_m-sp)/100)) + (pp*h_an*(op/100)*csp*c_ene) + (cp*(mp_pre/100))
 
@@ -143,10 +140,10 @@ p5y = (dmarg * 5) - (cp - ca)
 # --- TABELLA UI ---
 st.subheader(t['tech_comp'])
 df_vis = pd.DataFrame({
-    "Metric": [t['output_h'], t['annual_prod'], "OEE %", "Scrap %", "2-Sigma %", t['cost_kg'], t['margin_yr']],
-    t['line_a']: [f"{pa} kg/h", f"{ton_a:,.0f} T", f"{oa}%", f"{scra}%", f"{sa}%", f"{simbolo} {ckga*cambio:.3f}", f"{simbolo} {marga*cambio:,.0f}"],
-    t['line_b']: [f"{pp} kg/h", f"{ton_p:,.0f} T", f"{op}%", f"{scrp}%", f"{sp}%", f"{simbolo} {ckgp*cambio:.3f}", f"{simbolo} {margp*cambio:,.0f}"],
-    "Analysis": [f"🚀 +{pp-pa} kg/h", f"📈 +{diff_tons:,.0f} T", f"✅ +{op-oa}%", f"📉 -{scra-scrp}%", f"🎯 {sp-sa}%", f"💸 -{simbolo} {(ckga-ckgp)*cambio:.3f}", f"🔥 +{simbolo} {dmarg*cambio:,.0f}"]
+    "Metric": [t['output_h'], t['annual_prod'], "OEE %", "Scrap %", "2-Sigma %", "Maint. Cost %", t['cost_kg'], t['margin_yr']],
+    t['line_a']: [f"{pa} kg/h", f"{ton_a:,.0f} T", f"{oa}%", f"{scra}%", f"{sa}%", f"{ma_std}%", f"{simbolo} {ckga*cambio:.3f}", f"{simbolo} {marga*cambio:,.0f}"],
+    t['line_b']: [f"{pp} kg/h", f"{ton_p:,.0f} T", f"{op}%", f"{scrp}%", f"{sp}%", f"{mp_pre}%", f"{simbolo} {ckgp*cambio:.3f}", f"{simbolo} {margp*cambio:,.0f}"],
+    "Analysis": [f"🚀 +{pp-pa} kg/h", f"📈 +{diff_tons:,.0f} T", f"✅ +{op-oa}%", f"📉 -{scra-scrp}%", f"🎯 {sp-sa}%", f"🛠️ -{ma_std-mp_pre}%", f"💸 -{simbolo} {(ckga-ckgp)*cambio:.3f}", f"🔥 +{simbolo} {dmarg*cambio:,.0f}"]
 })
 st.table(df_vis)
 
