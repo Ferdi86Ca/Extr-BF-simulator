@@ -2,6 +2,8 @@ import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
 from fpdf import FPDF
+import tempfile
+import os
 
 # 1. DIZIONARIO TRADUZIONI COMPLETO
 lang_dict = {
@@ -141,7 +143,6 @@ diff_tons = ton_p - ton_a
 
 ene_cost_a = (pa * h_an * (oa/100) * csa * c_ene)
 ene_cost_p = (pp * h_an * (op/100) * csp * c_ene)
-ene_save_val = (pp * h_an * (op/100) * (csa - csp) * c_ene) # Risparmio su stessa produzione Premium
 
 opexa = (pa*h_an*(oa/100)*c_poly) + ene_cost_a + (ca*(ma_std/100))
 opexp = (pp*h_an*(op/100)*c_poly*(1-(tol_m-sp)/100)) + ene_cost_p + (cp*(mp_pre/100))
@@ -153,11 +154,11 @@ dmarg = margp - marga
 pbk = (cp - ca) / dmarg if dmarg > 0 else 0
 p5y = (dmarg * 5) - (cp - ca)
 
-# --- ANALISI FATTORI PER GRAFICO ---
+# Analisi Fattori
 gain_prod = (ton_p - ton_a) * 1000 * (p_sell - c_poly)
-gain_precision = (pp * h_an * (op/100)) * c_poly * ((tol_m - sp)/100 - (tol_m - sa)/100) # Delta precisione
+gain_precision = (pp * h_an * (op/100)) * c_poly * ((tol_m - sp)/100 - (tol_m - sa)/100)
 gain_maint = (ca * ma_std/100) - (cp * mp_pre/100)
-gain_energy = ene_cost_a * (pp/pa) - ene_cost_p # Normalizzato su produzione
+gain_energy = (pa * h_an * (oa/100)) * (csa - csp) * c_ene # Risparmio energetico su base oraria equivalente
 
 # --- TABELLA UI ---
 st.subheader(t['tech_comp'])
@@ -165,12 +166,11 @@ df_vis = pd.DataFrame({
     "Metric": [t['output_h'], t['annual_prod'], "OEE %", "Scrap %", "2-Sigma %", t['energy_cost_yr'], t['cost_kg'], t['margin_yr']],
     t['line_a']: [f"{pa} kg/h", f"{ton_a:,.0f} T", f"{oa}%", f"{scra}%", f"{sa}%", f"{simbolo} {ene_cost_a*cambio:,.0f}", f"{simbolo} {ckga*cambio:.3f}", f"{simbolo} {marga*cambio:,.0f}"],
     t['line_b']: [f"{pp} kg/h", f"{ton_p:,.0f} T", f"{op}%", f"{scrp}%", f"{sp}%", f"{simbolo} {ene_cost_p*cambio:,.0f}", f"{simbolo} {ckgp*cambio:.3f}", f"{simbolo} {margp*cambio:,.0f}"],
-    "Analysis": [f"🚀 +{pp-pa} kg/h", f"📈 +{diff_tons:,.0f} T", f"✅ +{op-oa}%", f"📉 -{scra-scrp}%", f"🎯 {sp-sa}%", f"⚡ {simbolo} {(ene_cost_a - ene_cost_p)*cambio:,.0f}*", f"💸 -{simbolo} {(ckga-ckgp)*cambio:.3f}", f"🔥 +{simbolo} {dmarg*cambio:,.0f}"]
+    "Analysis": [f"🚀 +{pp-pa} kg/h", f"📈 +{diff_tons:,.0f} T", f"✅ +{op-oa}%", f"📉 -{scra-scrp}%", f"🎯 {sp-sa}%", f"⚡ {simbolo} {(ene_cost_a - ene_cost_p)*cambio:,.0f}", f"💸 -{simbolo} {(ckga-ckgp)*cambio:.3f}", f"🔥 +{simbolo} {dmarg*cambio:,.0f}"]
 })
 st.table(df_vis)
-st.caption(f"* {t['energy_save']}")
 
-# --- SEZIONE ROI OTTIMIZZATA ---
+# --- SEZIONE ROI ---
 st.header(t['res_title'])
 with st.container():
     c1, c2, c3, c4 = st.columns(4)
@@ -183,64 +183,75 @@ with st.container():
     c4.markdown(f"### <span style='color:#00CC96'>{simbolo} {p5y*cambio:,.0f}</span>", unsafe_allow_html=True)
     c4.caption(f"**{t['profit_5y']}**")
 
-# --- NUOVI GRAFICI: PIE CHART FATTORI + PAYBACK ---
+# --- GRAFICI ---
 col_g1, col_g2 = st.columns(2)
-
 with col_g1:
-    # Grafico a torta dei fattori di profitto
     labels = ['Extra Productivity', 'Material Precision', 'Energy Saving', 'Maintenance Delta']
     values = [max(0, gain_prod), max(0, gain_precision), max(0, gain_energy), max(0, gain_maint)]
     fig_pie = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.4, marker=dict(colors=['#00CC96', '#19D3F3', '#AB63FA', '#FFA15A']))])
-    fig_pie.update_layout(title_text=t['factor_dist'], annotations=[dict(text='ROI', x=0.5, y=0.5, font_size=20, showarrow=False)])
+    fig_pie.update_layout(title_text=t['factor_dist'])
     st.plotly_chart(fig_pie, use_container_width=True)
 
 with col_g2:
     yrs = list(range(11))
     fa = [(-ca + (marga * i)) * cambio for i in yrs]
     fp = [(-cp + (margp * i)) * cambio for i in yrs]
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=yrs, y=fa, name=t['line_a'], line=dict(color='gray', dash='dot')))
-    fig.add_trace(go.Scatter(x=yrs, y=fp, name=t['line_b'], line=dict(color='#00CC96', width=4)))
-    fig.add_hline(y=0, line_color="black")
-    fig.update_layout(title="Payback Strategy")
-    st.plotly_chart(fig, use_container_width=True)
+    fig_line = go.Figure()
+    fig_line.add_trace(go.Scatter(x=yrs, y=fa, name=t['line_a'], line=dict(color='gray', dash='dot')))
+    fig_line.add_trace(go.Scatter(x=yrs, y=fp, name=t['line_b'], line=dict(color='#00CC96', width=4)))
+    fig_line.update_layout(title="Cumulative Cash Flow")
+    st.plotly_chart(fig_line, use_container_width=True)
 
-# --- CASELLA NOTE ---
+# --- NOTE ---
 st.divider()
 st.subheader(t['notes_label'])
 meeting_notes = st.text_area("", placeholder=t['notes_placeholder'], height=150)
 
-# --- PDF GENERATOR ---
+# --- FUNZIONE PDF CON GRAFICI ---
 def create_pdf():
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
     pdf.cell(190, 10, "ROI EXTRUSION - STRATEGIC REPORT", ln=True, align='C')
-    pdf.ln(5)
-    pdf.set_font("Arial", "B", 12); pdf.set_fill_color(240, 240, 240)
-    pdf.cell(190, 10, " 1. MARKET DATA", ln=True, fill=True)
-    pdf.set_font("Arial", "", 10)
-    pdf.cell(95, 8, f"Polymer: {c_poly*cambio:,.2f} {simbolo}/kg", 1); pdf.cell(95, 8, f"Energy: {c_ene*cambio:,.2f} {simbolo}/kWh", 1, 1)
-    pdf.ln(5); pdf.set_font("Arial", "B", 12)
-    pdf.cell(190, 10, " 2. TECHNICAL SPECIFICATIONS", ln=True, fill=True)
-    pdf.set_font("Arial", "B", 9)
-    pdf.cell(60, 8, "Feature", 1); pdf.cell(65, 8, "STANDARD LINE", 1); pdf.cell(65, 8, "PREMIUM LINE", 1, 1)
+    
+    # Dati Tabella
+    pdf.ln(5); pdf.set_font("Arial", "B", 12); pdf.set_fill_color(240, 240, 240)
+    pdf.cell(190, 10, " 1. TECHNICAL & FINANCIAL SUMMARY", ln=True, fill=True)
     pdf.set_font("Arial", "", 9)
-    pdf.cell(60, 8, "Hourly Output", 1); pdf.cell(65, 8, f"{pa} kg/h", 1); pdf.cell(65, 8, f"{pp} kg/h", 1, 1)
-    pdf.cell(60, 8, "OEE Efficiency", 1); pdf.cell(65, 8, f"{oa}%", 1); pdf.cell(65, 8, f"{op}%", 1, 1)
-    pdf.cell(60, 8, "Scrap Rate", 1); pdf.cell(65, 8, f"{scra}%", 1); pdf.cell(65, 8, f"{scrp}%", 1, 1)
-    pdf.cell(60, 8, "Energy Cost/yr", 1); pdf.cell(65, 8, f"{simbolo} {ene_cost_a*cambio:,.0f}", 1); pdf.cell(65, 8, f"{simbolo} {ene_cost_p*cambio:,.0f}", 1, 1)
-    pdf.ln(5); pdf.set_font("Arial", "B", 12)
-    pdf.cell(190, 10, " 3. ROI SUMMARY", ln=True, fill=True)
-    pdf.set_font("Arial", "", 10)
-    pdf.cell(95, 10, f"Payback Time: {pbk:.1f} Years", 1); pdf.cell(95, 10, f"5-Year Profit: {p5y*cambio:,.0f} {simbolo}", 1, 1)
+    pdf.cell(60, 8, "Metric", 1); pdf.cell(65, 8, "STANDARD LINE", 1); pdf.cell(65, 8, "PREMIUM LINE", 1, 1)
+    pdf.cell(60, 8, "Annual Margin", 1); pdf.cell(65, 8, f"{simbolo} {marga*cambio:,.0f}", 1); pdf.cell(65, 8, f"{simbolo} {margp*cambio:,.0f}", 1, 1)
+    pdf.cell(60, 8, "Payback Period", 1); pdf.cell(65, 8, "-", 1); pdf.cell(65, 8, f"{pbk:.1f} Years", 1, 1)
+    
+    # Calcolo Rendimento Finanziario a 5 Anni
+    yield_std = ((marga * 5) / ca) * 100
+    yield_pre = ((margp * 5) / cp) * 100
+    pdf.ln(5); pdf.set_font("Arial", "B", 10)
+    pdf.cell(190, 8, f"Financial Yield (5-Year Total ROI): Standard {yield_std:.1f}% vs Premium {yield_pre:.1f}%", ln=True)
+
+    # Esportazione e inserimento grafici
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path_pie = os.path.join(tmpdir, "pie.png")
+        path_line = os.path.join(tmpdir, "line.png")
+        fig_pie.write_image(path_pie, engine="kaleido")
+        fig_line.write_image(path_line, engine="kaleido")
+        
+        pdf.ln(5)
+        pdf.image(path_pie, x=10, y=None, w=90)
+        pdf.image(path_line, x=105, y=pdf.get_y() - 75, w=90) # Allineamento orizzontale
+
     if meeting_notes:
-        pdf.ln(5); pdf.set_font("Arial", "B", 12)
-        pdf.cell(190, 10, " 4. MEETING NOTES", ln=True, fill=True)
+        pdf.set_y(220)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(190, 10, " 2. MEETING NOTES", ln=True, fill=True)
         pdf.set_font("Arial", "", 10)
         pdf.multi_cell(190, 8, meeting_notes, 1)
+        
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
 st.divider()
 if st.button(t['download_pdf']):
-    st.download_button("Save Final Report PDF", data=create_pdf(), file_name="ROI_Extrusion_Report.pdf", mime="application/pdf")
+    # Nota: richiede 'kaleido' installato per salvare i grafici plotly come immagini
+    try:
+        st.download_button("Save Final Report PDF", data=create_pdf(), file_name="ROI_Extrusion_Report.pdf", mime="application/pdf")
+    except Exception as e:
+        st.error(f"Please install kaleido: `pip install kaleido`. Error: {e}")
