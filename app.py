@@ -149,10 +149,10 @@ yield_5y_p = ((margp * 5) / cp) * 100
 # --- UI TABELLE ---
 st.subheader(t['tech_comp'])
 df_tech = pd.DataFrame({
-    "Metric": ["Output Real", "Efficiency (OEE)", "Material Scrap", "Specific Cons.", "Maintenance"],
-    "Standard": [f"{pa} kg/h", f"{oa}%", f"{scra}%", f"{csa} kWh/kg", f"{ma_std}%"],
-    "Premium": [f"{pp} kg/h", f"{op}%", f"{scrp}%", f"{csp} kWh/kg", f"{mp_pre}%"],
-    "Delta": [f"+{pp-pa}", f"+{op-oa}%", f"-{scra-scrp}%", f"-{csa-csp}", f"-{ma_std-mp_pre}%"]
+    "Metric": ["Output Real", "Total Annual Prod.", "Efficiency (OEE)", "Material Scrap", "Specific Cons.", "Maintenance"],
+    "Standard": [f"{pa} kg/h", f"{ton_a:,.0f} T", f"{oa}%", f"{scra}%", f"{csa} kWh/kg", f"{ma_std}%"],
+    "Premium": [f"{pp} kg/h", f"{ton_p:,.0f} T", f"{op}%", f"{scrp}%", f"{csp} kWh/kg", f"{mp_pre}%"],
+    "Delta": [f"+{pp-pa} kg/h", f"+{ton_p-ton_a:,.0f} T", f"+{op-oa}%", f"-{scra-scrp}%", f"-{csa-csp} kWh/kg", f"-{ma_std-mp_pre}%"]
 })
 st.table(df_tech)
 
@@ -161,7 +161,7 @@ df_fin = pd.DataFrame({
     "Financial Indicator": [t['margin_yr'], t['roi_ann'], t['roe_capex'], t['yield_5y']],
     "Standard Line": [f"{simbolo} {marga*cambio:,.0f}", f"{roi_ann_a:.1f}%", f"{roe_a:.1f}%", f"{yield_5y_a:.1f}%"],
     "Premium Line": [f"{simbolo} {margp*cambio:,.0f}", f"{roi_ann_p:.1f}%", f"{roe_p:.1f}%", f"{yield_5y_p:.1f}%"],
-    "Strategic Advantage": ["-", f"+{roi_ann_p-roi_ann_a:.1f}% pts", f"+{roe_p-roe_a:.1f}% pts", f"+{yield_5y_p-yield_5y_a:.1f}%"]
+    "Strategic Advantage": ["-", f"+{roi_ann_p-roi_ann_a:.1f}% pts", f"+{roe_p-roe_a:.1f}% pts", f"+{yield_5y_p-yield_5y_a:.1f}% pts"]
 })
 st.table(df_fin)
 
@@ -174,8 +174,14 @@ with c1:
     gain_maint = (ca * ma_std/100) - (cp * mp_pre/100)
     gain_energy = (pa * h_an * (oa/100)) * (csa - csp) * c_ene
     
-    fig_pie = go.Figure(data=[go.Pie(labels=['Productivity', 'Precision', 'Energy', 'Maintenance'], 
-                                    values=[max(0,gain_prod), max(0,gain_precision), max(0,gain_energy), max(0,gain_maint)], hole=.4)])
+    # FORZO COLORI ESPLICITI SENZA TRASPARENZA PER PDF
+    pie_colors = ['#00CC96', '#636EFA', '#AB63FA', '#FFA15A']
+    fig_pie = go.Figure(data=[go.Pie(
+        labels=['Productivity', 'Precision', 'Energy', 'Maintenance'], 
+        values=[max(0.1,gain_prod), max(0.1,gain_precision), max(0.1,gain_energy), max(0.1,gain_maint)], 
+        hole=.4,
+        marker=dict(colors=pie_colors, line=dict(color='#FFFFFF', width=2))
+    )])
     fig_pie.update_layout(title=t['factor_dist'], paper_bgcolor='white', plot_bgcolor='white')
     st.plotly_chart(fig_pie, use_container_width=True)
 
@@ -184,15 +190,15 @@ with c2:
     fa = [(-ca + (marga * i)) * cambio for i in yrs]
     fp = [(-cp + (margp * i)) * cambio for i in yrs]
     fig_line = go.Figure()
-    fig_line.add_trace(go.Scatter(x=yrs, y=fa, name="Standard", line=dict(color='gray', dash='dot')))
+    fig_line.add_trace(go.Scatter(x=yrs, y=fa, name="Standard", line=dict(color='#7F7F7F', dash='dot', width=2)))
     fig_line.add_trace(go.Scatter(x=yrs, y=fp, name="Premium", line=dict(color='#00CC96', width=4)))
-    fig_line.update_layout(title="Asset Cash Flow", paper_bgcolor='white', plot_bgcolor='white')
+    fig_line.update_layout(title="Asset Cash Flow Projection", paper_bgcolor='white', plot_bgcolor='white')
     st.plotly_chart(fig_line, use_container_width=True)
 
 st.divider()
 meeting_notes = st.text_area(t['notes_label'], placeholder=t['notes_placeholder'], height=150)
 
-# --- PDF GENERATOR (FIXED LAYOUT) ---
+# --- PDF GENERATOR (FIXED LAYOUT & COLORS) ---
 def create_pdf():
     pdf = FPDF()
     pdf.add_page()
@@ -212,31 +218,31 @@ def create_pdf():
     # 2. Tabella Finanziaria
     pdf.ln(5)
     pdf.set_font("Arial", "B", 11)
-    pdf.cell(190, 10, " 2. FINANCIAL ASSET ANALYSIS (ROI/ROE/YIELD)", ln=True, fill=True)
+    pdf.cell(190, 10, " 2. FINANCIAL ASSET ANALYSIS", ln=True, fill=True)
     pdf.set_font("Arial", "B", 8)
-    pdf.cell(45, 7, "Financial KPI", 1); pdf.cell(48, 7, "STANDARD LINE", 1); pdf.cell(48, 7, "PREMIUM LINE", 1); pdf.cell(49, 7, "STRATEGIC ADV.", 1, 1)
+    pdf.cell(45, 7, "Financial KPI", 1); pdf.cell(48, 7, "STANDARD", 1); pdf.cell(48, 7, "PREMIUM", 1); pdf.cell(49, 7, "STRATEGIC ADV.", 1, 1)
     pdf.set_font("Arial", "", 8)
     for i, row in df_fin.iterrows():
         pdf.cell(45, 7, row['Financial Indicator'], 1); pdf.cell(48, 7, row['Standard Line'], 1); pdf.cell(48, 7, row['Premium Line'], 1); pdf.cell(49, 7, row['Strategic Advantage'], 1, 1)
 
-    # 3. Grafici (Posizionamento Fisso per evitare sovrapposizioni)
-    pdf.ln(10)
+    # 3. Grafici (Centrati e distanziati)
+    pdf.ln(12)
     y_start_charts = pdf.get_y()
     
     with tempfile.TemporaryDirectory() as tmpdir:
         p1 = os.path.join(tmpdir, "p1.png")
         p2 = os.path.join(tmpdir, "p2.png")
-        # Esportazione ad alta risoluzione con sfondo bianco
-        fig_pie.write_image(p1, engine="kaleido", scale=2, width=800, height=600)
-        fig_line.write_image(p2, engine="kaleido", scale=2, width=800, height=600)
+        # Esportazione con risoluzione aumentata e colori pieni
+        fig_pie.write_image(p1, engine="kaleido", scale=3, width=700, height=500)
+        fig_line.write_image(p2, engine="kaleido", scale=3, width=700, height=500)
         
-        pdf.image(p1, x=10, y=y_start_charts, w=90)
-        pdf.image(p2, x=105, y=y_start_charts, w=90)
+        pdf.image(p1, x=10, y=y_start_charts, w=85)
+        pdf.image(p2, x=105, y=y_start_charts, w=85)
     
-    # 4. Note (Forzate in basso)
+    # 4. Note
     pdf.set_y(y_start_charts + 75)
     if meeting_notes:
-        pdf.ln(5)
+        pdf.ln(10)
         pdf.set_font("Arial", "B", 11)
         pdf.cell(190, 10, " 3. STRATEGIC NOTES", ln=True, fill=True)
         pdf.set_font("Arial", "", 9)
@@ -248,6 +254,6 @@ st.divider()
 if st.button(t['download_pdf']):
     try:
         pdf_data = create_pdf()
-        st.download_button("Click here to save the Report", data=pdf_data, file_name="ROI_Strategic_Report.pdf", mime="application/pdf")
+        st.download_button("✅ Click here to save the Final Report", data=pdf_data, file_name="ROI_Strategic_Report.pdf", mime="application/pdf")
     except Exception as e:
-        st.error(f"Error generating PDF: {e}. Check if 'kaleido' is installed.")
+        st.error(f"Error: {e}. Make sure 'kaleido' is installed.")
