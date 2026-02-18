@@ -24,7 +24,10 @@ lang_dict = {
         "yield_5y": "5-Year Total Return (Yield)",
         "factor_dist": "Profit Driver Distribution",
         "line_a": "Standard Line",
-        "line_b": "Premium Line"
+        "line_b": "Premium Line",
+        "gain_prod_label": "Extra Productivity Gain",
+        "gain_prec_label": "Precision Savings (2-Sigma)",
+        "gain_scrap_label": "Reduced Scrap Savings"
     },
     "Italiano": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -43,7 +46,10 @@ lang_dict = {
         "yield_5y": "Rendimento Totale a 5 Anni (Yield)",
         "factor_dist": "Contributo dei Fattori di Guadagno",
         "line_a": "Linea Standard",
-        "line_b": "Linea Premium"
+        "line_b": "Linea Premium",
+        "gain_prod_label": "Guadagno Extra Produttività",
+        "gain_prec_label": "Risparmio Precisione (2-Sigma)",
+        "gain_scrap_label": "Risparmio Scarto Ridotto"
     },
     "Deutsch": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -62,7 +68,10 @@ lang_dict = {
         "yield_5y": "5-Jahres-Gesamtrendite (Yield)",
         "factor_dist": "Verteilung der Gewinnfaktoren",
         "line_a": "Standard-Linie",
-        "line_b": "Premium-Linie"
+        "line_b": "Premium-Linie",
+        "gain_prod_label": "Zusätzlicher Produktionsgewinn",
+        "gain_prec_label": "Präzisionseinsparungen (2-Sigma)",
+        "gain_scrap_label": "Einsparungen durch weniger Ausschuss"
     },
     "Español": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -81,7 +90,10 @@ lang_dict = {
         "yield_5y": "Rendimiento Total a 5 años (Yield)",
         "factor_dist": "Distribución de los factores de beneficio",
         "line_a": "Línea Estándar",
-        "line_b": "Línea Premium"
+        "line_b": "Línea Premium",
+        "gain_prod_label": "Ganancia por Productividad Extra",
+        "gain_prec_label": "Ahorro por Precisión (2-Sigma)",
+        "gain_scrap_label": "Ahorro por Scarto Reducido"
     }
 }
 
@@ -90,7 +102,7 @@ lingua = st.sidebar.selectbox("Language / Lingua / Sprache / Idioma", ["English"
 t = lang_dict[lingua]
 st.title(t['title'])
 
-# --- SIDEBAR: MERCATO ---
+# --- SIDEBAR: MERCATO (PARAMETRI AGGIORNATI) ---
 st.sidebar.header("🌍 Market Settings")
 valuta_sel = st.sidebar.radio("Currency", ["EUR", "USD"])
 cambio = 1.0; simbolo = "EUR"
@@ -98,10 +110,11 @@ if valuta_sel == "USD":
     cambio = st.sidebar.number_input("Exchange Rate (1€ = X $)", value=1.08)
     simbolo = "USD"
 
-c_poly = st.sidebar.number_input(f"Polymer Cost ({simbolo}/kg)", value=1.40 * cambio) / cambio
-p_sell = st.sidebar.number_input(f"Selling Price ({simbolo}/kg)", value=2.10 * cambio) / cambio
+# Nuovi default richiesti
+c_poly = st.sidebar.number_input(f"Polymer Cost ({simbolo}/kg)", value=1.50 * cambio) / cambio
+p_sell = st.sidebar.number_input(f"Selling Price ({simbolo}/kg)", value=2.00 * cambio) / cambio
 c_ene = st.sidebar.number_input(f"Energy Cost ({simbolo}/kWh)", value=0.22 * cambio) / cambio
-h_an = st.sidebar.number_input("Hours/Year", value=8000)
+h_an = st.sidebar.number_input("Hours/Year", value=7500)
 tol_m = st.sidebar.slider("Market Tol. (±%)", 1.0, 10.0, 6.0)
 
 # --- INPUT COMPARAZIONE ---
@@ -130,8 +143,18 @@ with col_p:
 ton_a = (pa * h_an * (oa/100) * (1 - scra/100)) / 1000
 ton_p = (pp * h_an * (op/100) * (1 - scrp/100)) / 1000
 
-marga, margp = ((ton_a*1000*p_sell) - ((pa*h_an*(oa/100)*c_poly) + (pa * h_an * (oa/100) * csa * c_ene) + (ca*(ma_std/100)))), \
-               ((ton_p*1000*p_sell) - ((pp*h_an*(op/100)*c_poly*(1-(tol_m-sp)/100)) + (pp * h_an * (op/100) * csp * c_ene) + (cp*(mp_pre/100))))
+# Analisi dei guadagni specifici Premium vs Standard
+gain_prod = (ton_p - ton_a) * 1000 * (p_sell - c_poly)
+gain_precision = (pp * h_an * (op/100)) * c_poly * ((tol_m - sp)/100 - (tol_m - sa)/100)
+gain_scrap = (pp * h_an * (op/100)) * c_poly * ((scra - scrp)/100)
+
+ene_cost_a = (pa * h_an * (oa/100) * csa * c_ene)
+ene_cost_p = (pp * h_an * (op/100) * csp * c_ene)
+
+opexa = (pa*h_an*(oa/100)*c_poly) + ene_cost_a + (ca*(ma_std/100))
+opexp = (pp*h_an*(op/100)*c_poly*(1-(tol_m-sp)/100)) + ene_cost_p + (cp*(mp_pre/100))
+
+marga, margp = (ton_a*1000*p_sell) - opexa, (ton_p*1000*p_sell) - opexp
 
 roi_ann_a, roi_ann_p = (marga / ca) * 100, (margp / cp) * 100
 roe_a, roe_p = ((marga - (ca/10)) / ca) * 100, ((margp - (cp/10)) / cp) * 100
@@ -149,10 +172,10 @@ st.table(df_tech)
 
 st.subheader(t['fin_comp'])
 df_fin = pd.DataFrame({
-    "Financial Indicator": [t['margin_yr'], t['roi_ann'], t['roe_capex'], t['yield_5y']],
-    "Standard Line": [f"{simbolo} {marga*cambio:,.0f}", f"{roi_ann_a:.1f}%", f"{roe_a:.1f}%", f"{yield_5y_a:.1f}%"],
-    "Premium Line": [f"{simbolo} {margp*cambio:,.0f}", f"{roi_ann_p:.1f}%", f"{roe_p:.1f}%", f"{yield_5y_p:.1f}%"],
-    "Strategic Advantage": ["-", f"+{roi_ann_p-roi_ann_a:.1f}% pts", f"+{roe_p-roe_a:.1f}% pts", f"+{yield_5y_p-yield_5y_a:.1f}% pts"]
+    "Indicator": [t['margin_yr'], t['roi_ann'], t['roe_capex'], t['yield_5y'], t['gain_prod_label'], t['gain_prec_label'], t['gain_scrap_label']],
+    "Standard": [f"{simbolo} {marga*cambio:,.0f}", f"{roi_ann_a:.1f}%", f"{roe_a:.1f}%", f"{yield_5y_a:.1f}%", "-", "-", "-"],
+    "Premium": [f"{simbolo} {margp*cambio:,.0f}", f"{roi_ann_p:.1f}%", f"{roe_p:.1f}%", f"{yield_5y_p:.1f}%", f"+ {simbolo} {gain_prod*cambio:,.0f}", f"+ {simbolo} {gain_precision*cambio:,.0f}", f"+ {simbolo} {gain_scrap*cambio:,.0f}"],
+    "Advantage": ["-", f"+{roi_ann_p-roi_ann_a:.1f}% pts", f"+{roe_p-roe_a:.1f}% pts", f"+{yield_5y_p-yield_5y_a:.1f}% pts", "🔥 Performance", "🎯 Precision", "♻️ Waste Red."]
 })
 st.table(df_fin)
 
@@ -160,13 +183,11 @@ st.table(df_fin)
 st.header(t['res_title'])
 c1, c2 = st.columns(2)
 with c1:
-    gain_prod = (ton_p - ton_a) * 1000 * (p_sell - c_poly)
-    gain_precision = (pp * h_an * (op/100)) * c_poly * ((tol_m - sp)/100 - (tol_m - sa)/100)
     gain_maint = (ca * ma_std/100) - (cp * mp_pre/100)
     gain_energy = (pa * h_an * (oa/100)) * (csa - csp) * c_ene
     pie_colors = ['#00CC96', '#636EFA', '#AB63FA', '#FFA15A']
-    fig_pie = go.Figure(data=[go.Pie(labels=['Productivity', 'Precision', 'Energy', 'Maintenance'], 
-                                    values=[max(0.1,gain_prod), max(0.1,gain_precision), max(0.1,gain_energy), max(0.1,gain_maint)], 
+    fig_pie = go.Figure(data=[go.Pie(labels=['Productivity', 'Precision', 'Scrap Recovery', 'Energy/Maint'], 
+                                    values=[max(0.1,gain_prod), max(0.1,gain_precision), max(0.1,gain_scrap), max(0.1,gain_energy+gain_maint)], 
                                     hole=.4, marker=dict(colors=pie_colors, line=dict(color='#FFFFFF', width=2)))])
     fig_pie.update_layout(title=t['factor_dist'], paper_bgcolor='white', plot_bgcolor='white')
     st.plotly_chart(fig_pie, use_container_width=True)
@@ -187,29 +208,28 @@ def create_pdf():
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
     pdf.cell(190, 10, "STRATEGIC ROI & FINANCIAL ANALYSIS", ln=True, align='C')
-    pdf.ln(5); pdf.set_font("Arial", "B", 11); pdf.set_fill_color(240, 240, 240)
-    pdf.cell(190, 10, " 1. OPERATIONAL PERFORMANCE", ln=True, fill=True)
-    pdf.set_font("Arial", "B", 8)
-    pdf.cell(45, 7, "Metric", 1); pdf.cell(48, 7, "STANDARD", 1); pdf.cell(48, 7, "PREMIUM", 1); pdf.cell(49, 7, "DELTA", 1, 1)
+    pdf.ln(5); pdf.set_font("Arial", "B", 10); pdf.set_fill_color(240, 240, 240)
+    pdf.cell(190, 8, " 1. OPERATIONAL PERFORMANCE", ln=True, fill=True)
     pdf.set_font("Arial", "", 8)
     for i, row in df_tech.iterrows():
-        pdf.cell(45, 7, row['Metric'], 1); pdf.cell(48, 7, row['Standard'], 1); pdf.cell(48, 7, row['Premium'], 1); pdf.cell(49, 7, row['Delta'], 1, 1)
-    pdf.ln(5); pdf.set_font("Arial", "B", 11)
-    pdf.cell(190, 10, " 2. FINANCIAL ASSET ANALYSIS", ln=True, fill=True)
-    pdf.set_font("Arial", "B", 8)
-    pdf.cell(45, 7, "Financial KPI", 1); pdf.cell(48, 7, "STANDARD", 1); pdf.cell(48, 7, "PREMIUM", 1); pdf.cell(49, 7, "STRATEGIC ADV.", 1, 1)
+        pdf.cell(45, 6, row['Metric'], 1); pdf.cell(48, 6, row['Standard'], 1); pdf.cell(48, 6, row['Premium'], 1); pdf.cell(49, 6, row['Delta'], 1, 1)
+    
+    pdf.ln(4); pdf.set_font("Arial", "B", 10)
+    pdf.cell(190, 8, " 2. FINANCIAL ASSET ANALYSIS & SAVINGS", ln=True, fill=True)
     pdf.set_font("Arial", "", 8)
     for i, row in df_fin.iterrows():
-        pdf.cell(45, 7, row['Financial Indicator'], 1); pdf.cell(48, 7, row['Standard Line'], 1); pdf.cell(48, 7, row['Premium Line'], 1); pdf.cell(49, 7, row['Strategic Advantage'], 1, 1)
-    pdf.ln(12); y_start_charts = pdf.get_y()
+        pdf.cell(45, 6, row['Indicator'], 1); pdf.cell(48, 6, row['Standard'], 1); pdf.cell(48, 6, row['Premium'], 1); pdf.cell(49, 6, row['Advantage'], 1, 1)
+    
+    pdf.ln(10); y_start_charts = pdf.get_y()
     with tempfile.TemporaryDirectory() as tmpdir:
         p1, p2 = os.path.join(tmpdir, "p1.png"), os.path.join(tmpdir, "p2.png")
         fig_pie.write_image(p1, engine="kaleido", scale=3, width=700, height=500)
         fig_line.write_image(p2, engine="kaleido", scale=3, width=700, height=500)
         pdf.image(p1, x=10, y=y_start_charts, w=85); pdf.image(p2, x=105, y=y_start_charts, w=85)
+    
     pdf.set_y(y_start_charts + 75)
     if meeting_notes:
-        pdf.ln(10); pdf.set_font("Arial", "B", 11); pdf.cell(190, 10, " 3. STRATEGIC NOTES", ln=True, fill=True)
+        pdf.ln(10); pdf.set_font("Arial", "B", 10); pdf.cell(190, 8, " 3. STRATEGIC NOTES", ln=True, fill=True)
         pdf.set_font("Arial", "", 9); pdf.multi_cell(190, 6, meeting_notes, 1)
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
