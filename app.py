@@ -5,7 +5,7 @@ from fpdf import FPDF
 import tempfile
 import os
 
-# 1. DIZIONARIO TRADUZIONI (Aggiornato con termini finanziari)
+# 1. DIZIONARIO TRADUZIONI COMPLETO
 lang_dict = {
     "English": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -22,7 +22,9 @@ lang_dict = {
         "roi_ann": "Annualized ROI",
         "roe_capex": "ROE (on CAPEX)",
         "yield_5y": "5-Year Total Return (Yield)",
-        "factor_dist": "Profit Driver Distribution"
+        "factor_dist": "Profit Driver Distribution",
+        "line_a": "Standard Line",
+        "line_b": "Premium Line"
     },
     "Italiano": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -39,12 +41,52 @@ lang_dict = {
         "roi_ann": "ROI Annualizzato",
         "roe_capex": "ROE (sul CAPEX)",
         "yield_5y": "Rendimento Totale a 5 Anni (Yield)",
-        "factor_dist": "Contributo dei Fattori di Guadagno"
+        "factor_dist": "Contributo dei Fattori di Guadagno",
+        "line_a": "Linea Standard",
+        "line_b": "Linea Premium"
+    },
+    "Deutsch": {
+        "title": "ROI Extrusion Strategic Advisor",
+        "tech_comp": "📊 Technischer & Operativer Vergleich",
+        "fin_comp": "💰 Asset-Performance & Finanzrendite",
+        "res_title": "🏁 ROI-Analyseergebnisse",
+        "download_pdf": "📩 Vollständigen Strategiebericht herunterladen (PDF)",
+        "annual_prod": "Jährliche Nettoproduktion",
+        "margin_yr": "Jährliche operativer Marge",
+        "cost_kg": "Prod.-Kosten pro KG",
+        "energy_cost_yr": "Jährliche Energiekosten",
+        "notes_label": "Besprechungsnotizen / Strategische Beobachtungen",
+        "notes_placeholder": "Vereinbarungen, Rabatte oder Kundenbeobachtungen eingeben...",
+        "roi_ann": "Annualisierter ROI",
+        "roe_capex": "ROE (auf CAPEX)",
+        "yield_5y": "5-Jahres-Gesamtrendite (Yield)",
+        "factor_dist": "Verteilung der Gewinnfaktoren",
+        "line_a": "Standard-Linie",
+        "line_b": "Premium-Linie"
+    },
+    "Español": {
+        "title": "ROI Extrusion Strategic Advisor",
+        "tech_comp": "📊 Comparativa Técnica y Operativa",
+        "fin_comp": "💰 Rendimiento del Activo y Rendimiento Financiero",
+        "res_title": "🏁 Resultados del Análisis ROI",
+        "download_pdf": "📩 Descargar Informe Estratégico COMPLETO (PDF)",
+        "annual_prod": "Producción Neta Anual",
+        "margin_yr": "Margen Operativo Anual",
+        "cost_kg": "Costo de Prod. por KG",
+        "energy_cost_yr": "Costo de Energía Anual",
+        "notes_label": "Notas de la reunión / Observaciones estratégicas",
+        "notes_placeholder": "Ingrese acuerdos, descuentos u observaciones del cliente...",
+        "roi_ann": "ROI Anualizado",
+        "roe_capex": "ROE (sobre CAPEX)",
+        "yield_5y": "Rendimiento Total a 5 años (Yield)",
+        "factor_dist": "Distribución de los factores de beneficio",
+        "line_a": "Línea Estándar",
+        "line_b": "Línea Premium"
     }
 }
 
 st.set_page_config(page_title="ROI Extrusion", layout="wide")
-lingua = st.sidebar.selectbox("Language", ["English", "Italiano"])
+lingua = st.sidebar.selectbox("Language / Lingua / Sprache / Idioma", ["English", "Italiano", "Deutsch", "Español"])
 t = lang_dict[lingua]
 st.title(t['title'])
 
@@ -65,7 +107,7 @@ tol_m = st.sidebar.slider("Market Tol. (±%)", 1.0, 10.0, 6.0)
 # --- INPUT COMPARAZIONE ---
 col_a, col_p = st.columns(2)
 with col_a:
-    st.subheader("⚪ Standard Line")
+    st.subheader(f"⚪ {t['line_a']}")
     ca = st.number_input("CAPEX Standard", value=1500000)
     pa = st.number_input("Output (kg/h) Std", value=400)
     oa = st.number_input("OEE (%) Std", value=83.0)
@@ -75,7 +117,7 @@ with col_a:
     csa = st.number_input("kWh/kg Std", value=0.40)
 
 with col_p:
-    st.subheader("💎 Premium Line")
+    st.subheader(f"💎 {t['line_b']}")
     cp = st.number_input("CAPEX Premium", value=2000000)
     pp = st.number_input("Output (kg/h) Prem", value=440)
     op = st.number_input("OEE (%) Prem", value=87.0)
@@ -94,17 +136,13 @@ ene_cost_p = (pp * h_an * (op/100) * csp * c_ene)
 opexa = (pa*h_an*(oa/100)*c_poly) + ene_cost_a + (ca*(ma_std/100))
 opexp = (pp*h_an*(op/100)*c_poly*(1-(tol_m-sp)/100)) + ene_cost_p + (cp*(mp_pre/100))
 
-ckga = (opexa + (ca/10)) / (ton_a*1000) if ton_a > 0 else 0
-ckgp = (opexp + (cp/10)) / (ton_p*1000) if ton_p > 0 else 0
 marga, margp = (ton_a*1000*p_sell) - opexa, (ton_p*1000*p_sell) - opexp
 dmarg = margp - marga
 pbk = (cp - ca) / dmarg if dmarg > 0 else 0
-p5y = (dmarg * 5) - (cp - ca)
 
-# Indicatori Finanziari
 roi_ann_a = (marga / ca) * 100
 roi_ann_p = (margp / cp) * 100
-roe_a = ((marga - (ca/10)) / ca) * 100 # Netto ammortamento
+roe_a = ((marga - (ca/10)) / ca) * 100
 roe_p = ((margp - (cp/10)) / cp) * 100
 yield_5y_a = ((marga * 5) / ca) * 100
 yield_5y_p = ((margp * 5) / cp) * 100
@@ -122,9 +160,9 @@ st.table(df_tech)
 st.subheader(t['fin_comp'])
 df_fin = pd.DataFrame({
     "Financial Indicator": [t['margin_yr'], t['roi_ann'], t['roe_capex'], t['yield_5y']],
-    "Standard Line": [f"{simbolo} {marga*cambio:,.0f}", f"{roi_ann_a:.1f}%", f"{roe_a:.1f}%", f"{yield_5y_a:.1f}%"],
-    "Premium Line": [f"{simbolo} {margp*cambio:,.0f}", f"{roi_ann_p:.1f}%", f"{roe_p:.1f}%", f"{yield_5y_p:.1f}%"],
-    "Strategic Advantage": ["-", f"+{roi_ann_p-roi_ann_a:.1f}% pts", f"+{roe_p-roe_a:.1f}% pts", f"🚀 +{yield_5y_p-yield_5y_a:.1f}%"]
+    "Standard": [f"{simbolo} {marga*cambio:,.0f}", f"{roi_ann_a:.1f}%", f"{roe_a:.1f}%", f"{yield_5y_a:.1f}%"],
+    "Premium": [f"{simbolo} {margp*cambio:,.0f}", f"{roi_ann_p:.1f}%", f"{roe_p:.1f}%", f"{yield_5y_p:.1f}%"],
+    "Advantage": ["-", f"+{roi_ann_p-roi_ann_a:.1f}%", f"+{roe_p-roe_a:.1f}%", f"+{yield_5y_p-yield_5y_a:.1f}%"]
 })
 st.table(df_fin)
 
@@ -132,12 +170,12 @@ st.table(df_fin)
 st.header(t['res_title'])
 c1, c2 = st.columns(2)
 with c1:
-    labels = ['Prod. Gain', 'Material Prec.', 'Energy Save', 'Maint. Delta']
     gain_prod = (ton_p - ton_a) * 1000 * (p_sell - c_poly)
     gain_precision = (pp * h_an * (op/100)) * c_poly * ((tol_m - sp)/100 - (tol_m - sa)/100)
     gain_maint = (ca * ma_std/100) - (cp * mp_pre/100)
     gain_energy = (pa * h_an * (oa/100)) * (csa - csp) * c_ene
-    fig_pie = go.Figure(data=[go.Pie(labels=labels, values=[gain_prod, gain_precision, gain_energy, gain_maint], hole=.4)])
+    fig_pie = go.Figure(data=[go.Pie(labels=['Prod.', 'Precision', 'Energy', 'Maint.'], 
+                                    values=[gain_prod, gain_precision, gain_energy, gain_maint], hole=.4)])
     fig_pie.update_layout(title=t['factor_dist'])
     st.plotly_chart(fig_pie, use_container_width=True)
 with c2:
@@ -147,53 +185,49 @@ with c2:
     fig_line = go.Figure()
     fig_line.add_trace(go.Scatter(x=yrs, y=fa, name="Standard", line=dict(color='gray', dash='dot')))
     fig_line.add_trace(go.Scatter(x=yrs, y=fp, name="Premium", line=dict(color='#00CC96', width=4)))
-    fig_line.update_layout(title="Cumulative Cash Flow (10 Years)")
+    fig_line.update_layout(title="Cash Flow")
     st.plotly_chart(fig_line, use_container_width=True)
 
-# --- NOTE ---
 st.divider()
 meeting_notes = st.text_area(t['notes_label'], placeholder=t['notes_placeholder'], height=150)
 
-# --- PDF GENERATOR AVANZATO ---
+# --- PDF GENERATOR ---
 def create_pdf():
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(190, 10, "STRATEGIC INVESTMENT ANALYSIS", ln=True, align='C')
+    pdf.cell(190, 10, "STRATEGIC ROI REPORT", ln=True, align='C')
     
-    # Sezione 1: Technical
+    # Tabelle
     pdf.ln(5); pdf.set_font("Arial", "B", 12); pdf.set_fill_color(230, 230, 230)
-    pdf.cell(190, 10, " 1. TECHNICAL PERFORMANCE COMPARISON", ln=True, fill=True)
-    pdf.set_font("Arial", "B", 9)
-    pdf.cell(50, 8, "Feature", 1); pdf.cell(70, 8, "STANDARD", 1); pdf.cell(70, 8, "PREMIUM", 1, 1)
+    pdf.cell(190, 10, " 1. TECHNICAL & FINANCIAL SUMMARY", ln=True, fill=True)
     pdf.set_font("Arial", "", 9)
     for i, row in df_tech.iterrows():
-        pdf.cell(50, 8, row['Metric'], 1); pdf.cell(70, 8, row['Standard'], 1); pdf.cell(70, 8, row['Premium'], 1, 1)
+        pdf.cell(50, 7, row['Metric'], 1); pdf.cell(70, 7, row['Standard'], 1); pdf.cell(70, 7, row['Premium'], 1, 1)
+    
+    pdf.ln(5); pdf.set_font("Arial", "B", 10)
+    pdf.cell(50, 7, "Yield Analysis", 1, fill=True); pdf.cell(70, 7, f"Standard: {yield_5y_a:.1f}%", 1); pdf.cell(70, 7, f"Premium: {yield_5y_p:.1f}%", 1, 1)
 
-    # Sezione 2: Financial Yield (Asset View)
-    pdf.ln(5); pdf.set_font("Arial", "B", 12)
-    pdf.cell(190, 10, " 2. FINANCIAL ASSET PERFORMANCE (5-YEAR VIEW)", ln=True, fill=True)
-    pdf.set_font("Arial", "B", 9)
-    pdf.cell(50, 8, "KPI", 1); pdf.cell(70, 8, "STANDARD LINE", 1); pdf.cell(70, 8, "PREMIUM LINE", 1, 1)
-    pdf.set_font("Arial", "", 9)
-    pdf.cell(50, 8, "Annualized ROI", 1); pdf.cell(70, 8, f"{roi_ann_a:.1f}%", 1); pdf.cell(70, 8, f"{roi_ann_p:.1f}%", 1, 1)
-    pdf.cell(50, 8, "ROE (on CAPEX)", 1); pdf.cell(70, 8, f"{roe_a:.1f}%", 1); pdf.cell(70, 8, f"{roe_p:.1f}%", 1, 1)
-    pdf.set_font("Arial", "B", 9)
-    pdf.cell(50, 8, "TOTAL YIELD (5Y)", 1, fill=True); pdf.cell(70, 8, f"{yield_5y_a:.1f}%", 1); pdf.cell(70, 8, f"{yield_5y_p:.1f}%", 1, 1)
-
-    # Grafici
+    # Spazio per i grafici (Spostati in basso per evitare sovrapposizioni)
+    pdf.ln(10) 
+    curr_y = pdf.get_y()
+    
     with tempfile.TemporaryDirectory() as tmpdir:
         p1 = os.path.join(tmpdir, "p1.png"); p2 = os.path.join(tmpdir, "p2.png")
-        fig_pie.write_image(p1, engine="kaleido"); fig_line.write_image(p2, engine="kaleido")
-        pdf.ln(5); pdf.image(p1, x=10, y=None, w=90); pdf.image(p2, x=105, y=pdf.get_y()-75, w=90)
+        # Forzo colori e sfondo bianco per l'esportazione
+        fig_pie.write_image(p1, engine="kaleido", scale=2)
+        fig_line.write_image(p2, engine="kaleido", scale=2)
+        
+        pdf.image(p1, x=10, y=curr_y, w=90)
+        pdf.image(p2, x=105, y=curr_y, w=90)
 
     if meeting_notes:
-        pdf.set_y(220); pdf.set_font("Arial", "B", 12)
-        pdf.cell(190, 10, " 3. STRATEGIC NOTES", ln=True, fill=True)
-        pdf.set_font("Arial", "", 10); pdf.multi_cell(190, 8, meeting_notes, 1)
+        pdf.set_y(curr_y + 80) # Posiziona le note sotto i grafici
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(190, 10, " 2. STRATEGIC NOTES", ln=True, fill=True)
+        pdf.set_font("Arial", "", 10); pdf.multi_cell(190, 7, meeting_notes, 1)
         
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
-st.divider()
 if st.button(t['download_pdf']):
-    st.download_button("Save Final Strategic Report", data=create_pdf(), file_name="ROI_Strategic_Report.pdf", mime="application/pdf")
+    st.download_button("Download PDF", data=create_pdf(), file_name="ROI_Report.pdf", mime="application/pdf")
