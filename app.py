@@ -85,7 +85,7 @@ lang_dict = {
     }
 }
 
-st.set_page_config(page_title="ROI Extrusion", layout="wide")
+st.set_page_config(page_title="ROI Advisor", layout="wide")
 lingua = st.sidebar.selectbox("Language / Lingua / Sprache / Idioma", ["English", "Italiano", "Deutsch", "Español"])
 t = lang_dict[lingua]
 st.title(t['title'])
@@ -138,7 +138,6 @@ opexp = (pp*h_an*(op/100)*c_poly*(1-(tol_m-sp)/100)) + ene_cost_p + (cp*(mp_pre/
 
 marga, margp = (ton_a*1000*p_sell) - opexa, (ton_p*1000*p_sell) - opexp
 dmarg = margp - marga
-pbk = (cp - ca) / dmarg if dmarg > 0 else 0
 
 roi_ann_a = (marga / ca) * 100
 roi_ann_p = (margp / cp) * 100
@@ -147,7 +146,7 @@ roe_p = ((margp - (cp/10)) / cp) * 100
 yield_5y_a = ((marga * 5) / ca) * 100
 yield_5y_p = ((margp * 5) / cp) * 100
 
-# --- UI: TABELLE ---
+# --- UI TABELLE ---
 st.subheader(t['tech_comp'])
 df_tech = pd.DataFrame({
     "Metric": ["Output Real", "Efficiency (OEE)", "Material Scrap", "Specific Cons.", "Maintenance"],
@@ -160,9 +159,9 @@ st.table(df_tech)
 st.subheader(t['fin_comp'])
 df_fin = pd.DataFrame({
     "Financial Indicator": [t['margin_yr'], t['roi_ann'], t['roe_capex'], t['yield_5y']],
-    "Standard": [f"{simbolo} {marga*cambio:,.0f}", f"{roi_ann_a:.1f}%", f"{roe_a:.1f}%", f"{yield_5y_a:.1f}%"],
-    "Premium": [f"{simbolo} {margp*cambio:,.0f}", f"{roi_ann_p:.1f}%", f"{roe_p:.1f}%", f"{yield_5y_p:.1f}%"],
-    "Advantage": ["-", f"+{roi_ann_p-roi_ann_a:.1f}%", f"+{roe_p-roe_a:.1f}%", f"+{yield_5y_p-yield_5y_a:.1f}%"]
+    "Standard Line": [f"{simbolo} {marga*cambio:,.0f}", f"{roi_ann_a:.1f}%", f"{roe_a:.1f}%", f"{yield_5y_a:.1f}%"],
+    "Premium Line": [f"{simbolo} {margp*cambio:,.0f}", f"{roi_ann_p:.1f}%", f"{roe_p:.1f}%", f"{yield_5y_p:.1f}%"],
+    "Strategic Advantage": ["-", f"+{roi_ann_p-roi_ann_a:.1f}% pts", f"+{roe_p-roe_a:.1f}% pts", f"+{yield_5y_p-yield_5y_a:.1f}%"]
 })
 st.table(df_fin)
 
@@ -174,10 +173,12 @@ with c1:
     gain_precision = (pp * h_an * (op/100)) * c_poly * ((tol_m - sp)/100 - (tol_m - sa)/100)
     gain_maint = (ca * ma_std/100) - (cp * mp_pre/100)
     gain_energy = (pa * h_an * (oa/100)) * (csa - csp) * c_ene
-    fig_pie = go.Figure(data=[go.Pie(labels=['Prod.', 'Precision', 'Energy', 'Maint.'], 
-                                    values=[gain_prod, gain_precision, gain_energy, gain_maint], hole=.4)])
-    fig_pie.update_layout(title=t['factor_dist'])
+    
+    fig_pie = go.Figure(data=[go.Pie(labels=['Productivity', 'Precision', 'Energy', 'Maintenance'], 
+                                    values=[max(0,gain_prod), max(0,gain_precision), max(0,gain_energy), max(0,gain_maint)], hole=.4)])
+    fig_pie.update_layout(title=t['factor_dist'], paper_bgcolor='white', plot_bgcolor='white')
     st.plotly_chart(fig_pie, use_container_width=True)
+
 with c2:
     yrs = list(range(11))
     fa = [(-ca + (marga * i)) * cambio for i in yrs]
@@ -185,49 +186,68 @@ with c2:
     fig_line = go.Figure()
     fig_line.add_trace(go.Scatter(x=yrs, y=fa, name="Standard", line=dict(color='gray', dash='dot')))
     fig_line.add_trace(go.Scatter(x=yrs, y=fp, name="Premium", line=dict(color='#00CC96', width=4)))
-    fig_line.update_layout(title="Cash Flow")
+    fig_line.update_layout(title="Asset Cash Flow", paper_bgcolor='white', plot_bgcolor='white')
     st.plotly_chart(fig_line, use_container_width=True)
 
 st.divider()
 meeting_notes = st.text_area(t['notes_label'], placeholder=t['notes_placeholder'], height=150)
 
-# --- PDF GENERATOR ---
+# --- PDF GENERATOR (FIXED LAYOUT) ---
 def create_pdf():
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(190, 10, "STRATEGIC ROI REPORT", ln=True, align='C')
+    pdf.cell(190, 10, "STRATEGIC ROI & FINANCIAL ANALYSIS", ln=True, align='C')
     
-    # Tabelle
-    pdf.ln(5); pdf.set_font("Arial", "B", 12); pdf.set_fill_color(230, 230, 230)
-    pdf.cell(190, 10, " 1. TECHNICAL & FINANCIAL SUMMARY", ln=True, fill=True)
-    pdf.set_font("Arial", "", 9)
+    # 1. Tabella Tecnica
+    pdf.ln(5)
+    pdf.set_font("Arial", "B", 11); pdf.set_fill_color(240, 240, 240)
+    pdf.cell(190, 10, " 1. OPERATIONAL PERFORMANCE", ln=True, fill=True)
+    pdf.set_font("Arial", "B", 8)
+    pdf.cell(45, 7, "Metric", 1); pdf.cell(48, 7, "STANDARD", 1); pdf.cell(48, 7, "PREMIUM", 1); pdf.cell(49, 7, "DELTA", 1, 1)
+    pdf.set_font("Arial", "", 8)
     for i, row in df_tech.iterrows():
-        pdf.cell(50, 7, row['Metric'], 1); pdf.cell(70, 7, row['Standard'], 1); pdf.cell(70, 7, row['Premium'], 1, 1)
-    
-    pdf.ln(5); pdf.set_font("Arial", "B", 10)
-    pdf.cell(50, 7, "Yield Analysis", 1, fill=True); pdf.cell(70, 7, f"Standard: {yield_5y_a:.1f}%", 1); pdf.cell(70, 7, f"Premium: {yield_5y_p:.1f}%", 1, 1)
+        pdf.cell(45, 7, row['Metric'], 1); pdf.cell(48, 7, row['Standard'], 1); pdf.cell(48, 7, row['Premium'], 1); pdf.cell(49, 7, row['Delta'], 1, 1)
 
-    # Spazio per i grafici (Spostati in basso per evitare sovrapposizioni)
-    pdf.ln(10) 
-    curr_y = pdf.get_y()
+    # 2. Tabella Finanziaria
+    pdf.ln(5)
+    pdf.set_font("Arial", "B", 11)
+    pdf.cell(190, 10, " 2. FINANCIAL ASSET ANALYSIS (ROI/ROE/YIELD)", ln=True, fill=True)
+    pdf.set_font("Arial", "B", 8)
+    pdf.cell(45, 7, "Financial KPI", 1); pdf.cell(48, 7, "STANDARD LINE", 1); pdf.cell(48, 7, "PREMIUM LINE", 1); pdf.cell(49, 7, "STRATEGIC ADV.", 1, 1)
+    pdf.set_font("Arial", "", 8)
+    for i, row in df_fin.iterrows():
+        pdf.cell(45, 7, row['Financial Indicator'], 1); pdf.cell(48, 7, row['Standard Line'], 1); pdf.cell(48, 7, row['Premium Line'], 1); pdf.cell(49, 7, row['Strategic Advantage'], 1, 1)
+
+    # 3. Grafici (Posizionamento Fisso per evitare sovrapposizioni)
+    pdf.ln(10)
+    y_start_charts = pdf.get_y()
     
     with tempfile.TemporaryDirectory() as tmpdir:
-        p1 = os.path.join(tmpdir, "p1.png"); p2 = os.path.join(tmpdir, "p2.png")
-        # Forzo colori e sfondo bianco per l'esportazione
-        fig_pie.write_image(p1, engine="kaleido", scale=2)
-        fig_line.write_image(p2, engine="kaleido", scale=2)
+        p1 = os.path.join(tmpdir, "p1.png")
+        p2 = os.path.join(tmpdir, "p2.png")
+        # Esportazione ad alta risoluzione con sfondo bianco
+        fig_pie.write_image(p1, engine="kaleido", scale=2, width=800, height=600)
+        fig_line.write_image(p2, engine="kaleido", scale=2, width=800, height=600)
         
-        pdf.image(p1, x=10, y=curr_y, w=90)
-        pdf.image(p2, x=105, y=curr_y, w=90)
-
+        pdf.image(p1, x=10, y=y_start_charts, w=90)
+        pdf.image(p2, x=105, y=y_start_charts, w=90)
+    
+    # 4. Note (Forzate in basso)
+    pdf.set_y(y_start_charts + 75)
     if meeting_notes:
-        pdf.set_y(curr_y + 80) # Posiziona le note sotto i grafici
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(190, 10, " 2. STRATEGIC NOTES", ln=True, fill=True)
-        pdf.set_font("Arial", "", 10); pdf.multi_cell(190, 7, meeting_notes, 1)
+        pdf.ln(5)
+        pdf.set_font("Arial", "B", 11)
+        pdf.cell(190, 10, " 3. STRATEGIC NOTES", ln=True, fill=True)
+        pdf.set_font("Arial", "", 9)
+        pdf.multi_cell(190, 6, meeting_notes, 1)
         
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
+st.divider()
 if st.button(t['download_pdf']):
-    st.download_button("Download PDF", data=create_pdf(), file_name="ROI_Report.pdf", mime="application/pdf")
+    try:
+        pdf_data = create_pdf()
+        st.download_button("Click here to save the Report", data=pdf_data, file_name="ROI_Strategic_Report.pdf", mime="application/pdf")
+    except Exception as e:
+        st.error(f"Error generating PDF: {e}. Check if 'kaleido' is installed.")
