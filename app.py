@@ -4,8 +4,13 @@ import pandas as pd
 from fpdf import FPDF
 import tempfile
 import os
+import re
 
-# 1. COMPLETE TRANSLATION DICTIONARY (5 Languages)
+# Function to remove emojis/Unicode for PDF compatibility
+def clean_text(text):
+    return re.sub(r'[^\x00-\x7F]+', '', str(text))
+
+# 1. COMPLETE TRANSLATION DICTIONARY
 lang_dict = {
     "English": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -105,10 +110,10 @@ lang_dict = {
     },
     "العربية": {
         "title": "مستشار استراتيجية عائد الاستثمار في البثق",
-        "tech_comp": "📊 المقارنة الفنية والتشغيلية",
-        "fin_comp": "💰 أداء الأصول والعائد المالي",
-        "res_title": "🏁 نتائج تحليل عائد الاستثمار (ROI)",
-        "download_pdf": "📩 تحميل التقرير الاستراتيجي الكامل (PDF)",
+        "tech_comp": "المقارنة الفنية والتشغيلية",
+        "fin_comp": "أداء الأصول والعائد المالي",
+        "res_title": "نتائج تحليل عائد الاستثمار (ROI)",
+        "download_pdf": "تحميل التقرير الاستراتيجي الكامل (PDF)",
         "annual_prod": "الإنتاج السنوي الصافي",
         "margin_yr": "هامش التشغيل السنوي",
         "cost_kg": "تكلفة الإنتاج للكيلوغرام",
@@ -116,7 +121,7 @@ lang_dict = {
         "notes_label": "ملاحظات الاجتماع / الملاحظات الاستراتيجية",
         "notes_placeholder": "أدخل الاتفاقيات أو الخصومات أو ملاحظات العميل...",
         "roi_ann": "عائد الاستثمار السنوي",
-        "roe_capex": "العائد على حقوق الملكية (على الإنفاق الرأسمالي)",
+        "roe_capex": "العائد على حقوق الملكية",
         "yield_5y": "إجمالي العائد لمدة 5 سنوات",
         "factor_dist": "توزيع محركات الربح",
         "line_a": "الخط القياسي",
@@ -125,7 +130,7 @@ lang_dict = {
         "gain_prec_label": "توفير الدقة (2-سيجما)",
         "gain_scrap_label": "توفير تقليل الهالك",
         "payback_months": "أشهر لاسترداد الإنفاق الرأسمالي الإضافي",
-        "crossover_title": "إجمالي الربح الإضافي (الممتاز مقابل القياسي)"
+        "crossover_title": "إجمالي الربح الإضافي"
     }
 }
 
@@ -206,11 +211,11 @@ df_fin = pd.DataFrame({
     "Indicator": [t['margin_yr'], t['roi_ann'], t['roe_capex'], t['yield_5y'], t['gain_prod_label'], t['gain_prec_label'], t['gain_scrap_label']],
     "Standard": [f"{simbolo} {marga*cambio:,.0f}", f"{roi_ann_a:.1f}%", f"{roe_a:.1f}%", f"{yield_5y_a:.1f}%", "-", "-", "-"],
     "Premium": [f"{simbolo} {margp*cambio:,.0f}", f"{roi_ann_p:.1f}%", f"{roe_p:.1f}%", f"{yield_5y_p:.1f}%", f"+ {simbolo} {gain_prod*cambio:,.0f}", f"+ {simbolo} {gain_precision*cambio:,.0f}", f"+ {simbolo} {gain_scrap*cambio:,.0f}"],
-    "Advantage": ["-", f"+{roi_ann_p-roi_ann_a:.1f}% pts", f"+{roe_p-roe_a:.1f}% pts", f"+{yield_5y_p-yield_5y_a:.1f}% pts", "🔥 Performance", "🎯 Precision", "♻️ Waste Red."]
+    "Advantage": ["-", f"+{roi_ann_p-roi_ann_a:.1f}% pts", f"+{roe_p-roe_a:.1f}% pts", f"+{yield_5y_p-yield_5y_a:.1f}% pts", "Performance", "Precision", "Waste Red."]
 })
 st.table(df_fin)
 
-st.metric(label=f"⭐ {t['payback_months']}", value=f"{payback_months:.1f} Months", delta="Target: < 36 Months")
+st.metric(label=f" {t['payback_months']}", value=f"{payback_months:.1f} Months", delta="Target: < 36 Months")
 
 # --- CHARTS ---
 st.header(t['res_title'])
@@ -223,7 +228,7 @@ with c1:
     fig_pie.update_layout(title=t['factor_dist'], paper_bgcolor='white', plot_bgcolor='white')
     st.plotly_chart(fig_pie, use_container_width=True)
 with c2:
-    yrs_cross = [i/4 for i in range(41)] # Quarterly for 10 years
+    yrs_cross = [i/4 for i in range(41)]
     extra_profit_cum = [(-extra_capex + (extra_margin_yr * y)) * cambio for y in yrs_cross]
     fig_cross = go.Figure()
     fig_cross.add_trace(go.Scatter(x=yrs_cross, y=extra_profit_cum, name="Net Premium Advantage", line=dict(color='#00CC96', width=4), fill='tozeroy'))
@@ -234,19 +239,19 @@ with c2:
 st.divider()
 meeting_notes = st.text_area(t['notes_label'], placeholder=t['notes_placeholder'], height=150)
 
-# --- PDF GENERATOR ---
+# --- PDF GENERATOR (FIXED FOR UNICODE ERRORS) ---
 def create_pdf():
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(190, 10, "STRATEGIC ROI & FINANCIAL ANALYSIS", ln=True, align='C')
+    pdf.cell(190, 10, clean_text("STRATEGIC ROI & FINANCIAL ANALYSIS"), ln=True, align='C')
     pdf.ln(5); pdf.set_font("Arial", "B", 10); pdf.set_fill_color(240, 240, 240)
     pdf.cell(190, 8, " 1. OPERATIONAL PERFORMANCE", ln=True, fill=True)
     pdf.set_font("Arial", "B", 8)
     pdf.cell(45, 7, "Metric", 1); pdf.cell(48, 7, "STANDARD", 1); pdf.cell(48, 7, "PREMIUM", 1); pdf.cell(49, 7, "DELTA", 1, 1)
     pdf.set_font("Arial", "", 8)
     for i, row in df_tech.iterrows():
-        pdf.cell(45, 7, row['Metric'], 1); pdf.cell(48, 7, row['Standard'], 1); pdf.cell(48, 7, row['Premium'], 1); pdf.cell(49, 7, row['Delta'], 1, 1)
+        pdf.cell(45, 7, clean_text(row['Metric']), 1); pdf.cell(48, 7, clean_text(row['Standard']), 1); pdf.cell(48, 7, clean_text(row['Premium']), 1); pdf.cell(49, 7, clean_text(row['Delta']), 1, 1)
     
     pdf.ln(4); pdf.set_font("Arial", "B", 10)
     pdf.cell(190, 8, " 2. FINANCIAL ASSET ANALYSIS & SAVINGS", ln=True, fill=True)
@@ -254,7 +259,7 @@ def create_pdf():
     pdf.cell(45, 7, "Indicator", 1); pdf.cell(48, 7, "STANDARD", 1); pdf.cell(48, 7, "PREMIUM", 1); pdf.cell(49, 7, "ADVANTAGE", 1, 1)
     pdf.set_font("Arial", "", 8)
     for i, row in df_fin.iterrows():
-        pdf.cell(45, 7, row['Indicator'], 1); pdf.cell(48, 7, row['Standard'], 1); pdf.cell(48, 7, row['Premium'], 1); pdf.cell(49, 7, row['Advantage'], 1, 1)
+        pdf.cell(45, 7, clean_text(row['Indicator']), 1); pdf.cell(48, 7, clean_text(row['Standard']), 1); pdf.cell(48, 7, clean_text(row['Premium']), 1); pdf.cell(49, 7, clean_text(row['Advantage']), 1, 1)
     
     pdf.ln(4); pdf.set_font("Arial", "B", 11)
     pdf.cell(190, 10, f"PAYBACK PERIOD FOR EXTRA INVESTMENT: {payback_months:.1f} MONTHS", align='C', ln=True)
@@ -269,7 +274,7 @@ def create_pdf():
     pdf.set_y(y_start_charts + 75)
     if meeting_notes:
         pdf.ln(10); pdf.set_font("Arial", "B", 10); pdf.cell(190, 8, " 3. STRATEGIC NOTES", ln=True, fill=True)
-        pdf.set_font("Arial", "", 9); pdf.multi_cell(190, 6, meeting_notes, 1)
+        pdf.set_font("Arial", "", 9); pdf.multi_cell(190, 6, clean_text(meeting_notes), 1)
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
 if st.button(t['download_pdf']):
