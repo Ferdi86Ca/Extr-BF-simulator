@@ -5,7 +5,7 @@ from fpdf import FPDF
 import tempfile
 import os
 
-# 1. DIZIONARIO TRADUZIONI COMPLETO
+# 1. DIZIONARIO TRADUZIONI COMPLETO (Added Arabic)
 lang_dict = {
     "English": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -27,7 +27,8 @@ lang_dict = {
         "line_b": "Premium Line",
         "gain_prod_label": "Extra Productivity Gain",
         "gain_prec_label": "Precision Savings (2-Sigma)",
-        "gain_scrap_label": "Reduced Scrap Savings"
+        "gain_scrap_label": "Reduced Scrap Savings",
+        "payback_months": "Months to Payback Extra CAPEX"
     },
     "Italiano": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -49,7 +50,8 @@ lang_dict = {
         "line_b": "Linea Premium",
         "gain_prod_label": "Guadagno Extra Produttività",
         "gain_prec_label": "Risparmio Precisione (2-Sigma)",
-        "gain_scrap_label": "Risparmio Scarto Ridotto"
+        "gain_scrap_label": "Risparmio Scarto Ridotto",
+        "payback_months": "Mesi per rientro Extra CAPEX"
     },
     "Deutsch": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -71,7 +73,8 @@ lang_dict = {
         "line_b": "Premium-Linie",
         "gain_prod_label": "Zusätzlicher Produktionsgewinn",
         "gain_prec_label": "Präzisionseinsparungen (2-Sigma)",
-        "gain_scrap_label": "Einsparungen durch weniger Ausschuss"
+        "gain_scrap_label": "Einsparungen durch Ausschuss",
+        "payback_months": "Monate bis zur Amortisation"
     },
     "Español": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -91,18 +94,42 @@ lang_dict = {
         "factor_dist": "Distribución de los factores de beneficio",
         "line_a": "Línea Estándar",
         "line_b": "Línea Premium",
-        "gain_prod_label": "Ganancia por Productividad Extra",
+        "gain_prod_label": "Ganancia por Productividad",
         "gain_prec_label": "Ahorro por Precisión (2-Sigma)",
-        "gain_scrap_label": "Ahorro por Scarto Reducido"
+        "gain_scrap_label": "Ahorro por Scarto Reducido",
+        "payback_months": "Meses para amortizar Extra CAPEX"
+    },
+    "العربية": {
+        "title": "مستشار استراتيجية عائد الاستثمار في البثق",
+        "tech_comp": "📊 المقارنة الفنية والتشغيلية",
+        "fin_comp": "💰 أداء الأصول والعائد المالي",
+        "res_title": "🏁 نتائج تحليل عائد الاستثمار (ROI)",
+        "download_pdf": "📩 تحميل التقرير الاستراتيجي الكامل (PDF)",
+        "annual_prod": "الإنتاج السنوي الصافي",
+        "margin_yr": "هامش التشغيل السنوي",
+        "cost_kg": "تكلفة الإنتاج للكيلوغرام",
+        "energy_cost_yr": "تكلفة الطاقة السنوية",
+        "notes_label": "ملاحظات الاجتماع / الملاحظات الاستراتيجية",
+        "notes_placeholder": "أدخل الاتفاقيات أو الخصومات أو ملاحظات العميل...",
+        "roi_ann": "عائد الاستثمار السنوي",
+        "roe_capex": "العائد على حقوق الملكية (على الإنفاق الرأسمالي)",
+        "yield_5y": "إجمالي العائد لمدة 5 سنوات",
+        "factor_dist": "توزيع محركات الربح",
+        "line_a": "الخط القياسي",
+        "line_b": "الخط المتميز",
+        "gain_prod_label": "ربح الإنتاجية الإضافي",
+        "gain_prec_label": "توفير الدقة (2-سيجما)",
+        "gain_scrap_label": "توفير تقليل الهالك",
+        "payback_months": "أشهر لاسترداد الإنفاق الرأسمالي الإضافي"
     }
 }
 
 st.set_page_config(page_title="ROI Advisor", layout="wide")
-lingua = st.sidebar.selectbox("Language / Lingua / Sprache / Idioma", ["English", "Italiano", "Deutsch", "Español"])
+lingua = st.sidebar.selectbox("Language / Lingua / Sprache / Idioma / اللغة", ["English", "Italiano", "Deutsch", "Español", "العربية"])
 t = lang_dict[lingua]
 st.title(t['title'])
 
-# --- SIDEBAR: MERCATO (PARAMETRI AGGIORNATI) ---
+# --- SIDEBAR: MARKET SETTINGS ---
 st.sidebar.header("🌍 Market Settings")
 valuta_sel = st.sidebar.radio("Currency", ["EUR", "USD"])
 cambio = 1.0; simbolo = "EUR"
@@ -110,14 +137,13 @@ if valuta_sel == "USD":
     cambio = st.sidebar.number_input("Exchange Rate (1€ = X $)", value=1.08)
     simbolo = "USD"
 
-# Nuovi default richiesti
 c_poly = st.sidebar.number_input(f"Polymer Cost ({simbolo}/kg)", value=1.50 * cambio) / cambio
 p_sell = st.sidebar.number_input(f"Selling Price ({simbolo}/kg)", value=2.00 * cambio) / cambio
 c_ene = st.sidebar.number_input(f"Energy Cost ({simbolo}/kWh)", value=0.22 * cambio) / cambio
 h_an = st.sidebar.number_input("Hours/Year", value=7500)
 tol_m = st.sidebar.slider("Market Tol. (±%)", 1.0, 10.0, 6.0)
 
-# --- INPUT COMPARAZIONE ---
+# --- INPUT COMPARISON ---
 col_a, col_p = st.columns(2)
 with col_a:
     st.subheader(f"⚪ {t['line_a']}")
@@ -139,31 +165,31 @@ with col_p:
     mp_pre = st.number_input("Maint. % Prem", value=1.5)
     csp = st.number_input("kWh/kg Prem", value=0.35)
 
-# --- CALCOLI AVANZATI ---
+# --- CALCULATIONS ---
 ton_a = (pa * h_an * (oa/100) * (1 - scra/100)) / 1000
 ton_p = (pp * h_an * (op/100) * (1 - scrp/100)) / 1000
 
-# Analisi dei guadagni specifici Premium vs Standard
 gain_prod = (ton_p - ton_a) * 1000 * (p_sell - c_poly)
 gain_precision = (pp * h_an * (op/100)) * c_poly * ((tol_m - sp)/100 - (tol_m - sa)/100)
 gain_scrap = (pp * h_an * (op/100)) * c_poly * ((scra - scrp)/100)
+gain_energy = (pa * h_an * (oa/100)) * (csa - csp) * c_ene
+gain_maint = (ca * ma_std/100) - (cp * mp_pre/100)
 
-ene_cost_a = (pa * h_an * (oa/100) * csa * c_ene)
-ene_cost_p = (pp * h_an * (op/100) * csp * c_ene)
+marga = (ton_a*1000*p_sell) - ((pa*h_an*(oa/100)*c_poly) + (pa*h_an*(oa/100)*csa*c_ene) + (ca*ma_std/100))
+margp = (ton_p*1000*p_sell) - ((pp*h_an*(op/100)*c_poly*(1-(tol_m-sp)/100)) + (pp*h_an*(op/100)*csp*c_ene) + (cp*mp_pre/100))
 
-opexa = (pa*h_an*(oa/100)*c_poly) + ene_cost_a + (ca*(ma_std/100))
-opexp = (pp*h_an*(op/100)*c_poly*(1-(tol_m-sp)/100)) + ene_cost_p + (cp*(mp_pre/100))
-
-marga, margp = (ton_a*1000*p_sell) - opexa, (ton_p*1000*p_sell) - opexp
+extra_capex = cp - ca
+extra_margin_yr = margp - marga
+payback_months = (extra_capex / extra_margin_yr) * 12 if extra_margin_yr > 0 else 0
 
 roi_ann_a, roi_ann_p = (marga / ca) * 100, (margp / cp) * 100
 roe_a, roe_p = ((marga - (ca/10)) / ca) * 100, ((margp - (cp/10)) / cp) * 100
 yield_5y_a, yield_5y_p = ((marga * 5) / ca) * 100, ((margp * 5) / cp) * 100
 
-# --- UI TABELLE ---
+# --- TABLES ---
 st.subheader(t['tech_comp'])
 df_tech = pd.DataFrame({
-    "Metric": ["Output Real", "Total Annual Prod.", "Efficiency (OEE)", "Material Scrap", "Specific Cons.", "Maintenance"],
+    "Metric": ["Real Output", "Total Annual Prod.", "Efficiency (OEE)", "Material Scrap", "Specific Cons.", "Maintenance"],
     "Standard": [f"{pa} kg/h", f"{ton_a:,.0f} T", f"{oa}%", f"{scra}%", f"{csa} kWh/kg", f"{ma_std}%"],
     "Premium": [f"{pp} kg/h", f"{ton_p:,.0f} T", f"{op}%", f"{scrp}%", f"{csp} kWh/kg", f"{mp_pre}%"],
     "Delta": [f"+{pp-pa} kg/h", f"+{ton_p-ton_a:,.0f} T", f"+{op-oa}%", f"-{scra-scrp}%", f"-{abs(csa-csp):.2f} kWh/kg", f"-{ma_std-mp_pre}%"]
@@ -179,12 +205,12 @@ df_fin = pd.DataFrame({
 })
 st.table(df_fin)
 
-# --- GRAFICI ---
+st.metric(label=f"⭐ {t['payback_months']}", value=f"{payback_months:.1f} Months", delta="Target: < 36 Months")
+
+# --- CHARTS ---
 st.header(t['res_title'])
 c1, c2 = st.columns(2)
 with c1:
-    gain_maint = (ca * ma_std/100) - (cp * mp_pre/100)
-    gain_energy = (pa * h_an * (oa/100)) * (csa - csp) * c_ene
     pie_colors = ['#00CC96', '#636EFA', '#AB63FA', '#FFA15A']
     fig_pie = go.Figure(data=[go.Pie(labels=['Productivity', 'Precision', 'Scrap Recovery', 'Energy/Maint'], 
                                     values=[max(0.1,gain_prod), max(0.1,gain_precision), max(0.1,gain_scrap), max(0.1,gain_energy+gain_maint)], 
@@ -210,16 +236,23 @@ def create_pdf():
     pdf.cell(190, 10, "STRATEGIC ROI & FINANCIAL ANALYSIS", ln=True, align='C')
     pdf.ln(5); pdf.set_font("Arial", "B", 10); pdf.set_fill_color(240, 240, 240)
     pdf.cell(190, 8, " 1. OPERATIONAL PERFORMANCE", ln=True, fill=True)
+    pdf.set_font("Arial", "B", 8)
+    pdf.cell(45, 7, "Metric", 1); pdf.cell(48, 7, "STANDARD", 1); pdf.cell(48, 7, "PREMIUM", 1); pdf.cell(49, 7, "DELTA", 1, 1)
     pdf.set_font("Arial", "", 8)
     for i, row in df_tech.iterrows():
-        pdf.cell(45, 6, row['Metric'], 1); pdf.cell(48, 6, row['Standard'], 1); pdf.cell(48, 6, row['Premium'], 1); pdf.cell(49, 6, row['Delta'], 1, 1)
+        pdf.cell(45, 7, row['Metric'], 1); pdf.cell(48, 7, row['Standard'], 1); pdf.cell(48, 7, row['Premium'], 1); pdf.cell(49, 7, row['Delta'], 1, 1)
     
     pdf.ln(4); pdf.set_font("Arial", "B", 10)
     pdf.cell(190, 8, " 2. FINANCIAL ASSET ANALYSIS & SAVINGS", ln=True, fill=True)
+    pdf.set_font("Arial", "B", 8)
+    pdf.cell(45, 7, "Indicator", 1); pdf.cell(48, 7, "STANDARD", 1); pdf.cell(48, 7, "PREMIUM", 1); pdf.cell(49, 7, "ADVANTAGE", 1, 1)
     pdf.set_font("Arial", "", 8)
     for i, row in df_fin.iterrows():
-        pdf.cell(45, 6, row['Indicator'], 1); pdf.cell(48, 6, row['Standard'], 1); pdf.cell(48, 6, row['Premium'], 1); pdf.cell(49, 6, row['Advantage'], 1, 1)
+        pdf.cell(45, 7, row['Indicator'], 1); pdf.cell(48, 7, row['Standard'], 1); pdf.cell(48, 7, row['Premium'], 1); pdf.cell(49, 7, row['Advantage'], 1, 1)
     
+    pdf.ln(4); pdf.set_font("Arial", "B", 11)
+    pdf.cell(190, 10, f"PAYBACK PERIOD FOR EXTRA INVESTMENT: {payback_months:.1f} MONTHS", align='C', ln=True)
+
     pdf.ln(10); y_start_charts = pdf.get_y()
     with tempfile.TemporaryDirectory() as tmpdir:
         p1, p2 = os.path.join(tmpdir, "p1.png"), os.path.join(tmpdir, "p2.png")
