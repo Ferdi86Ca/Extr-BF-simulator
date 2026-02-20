@@ -5,7 +5,7 @@ from fpdf import FPDF
 import tempfile
 import os
 
-# 1. DIZIONARIO TRADUZIONI COMPLETO (Added Arabic)
+# 1. COMPLETE TRANSLATION DICTIONARY (5 Languages)
 lang_dict = {
     "English": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -28,7 +28,8 @@ lang_dict = {
         "gain_prod_label": "Extra Productivity Gain",
         "gain_prec_label": "Precision Savings (2-Sigma)",
         "gain_scrap_label": "Reduced Scrap Savings",
-        "payback_months": "Months to Payback Extra CAPEX"
+        "payback_months": "Months to Payback Extra CAPEX",
+        "crossover_title": "Cumulative Extra Profit (Premium vs Std)"
     },
     "Italiano": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -51,7 +52,8 @@ lang_dict = {
         "gain_prod_label": "Guadagno Extra Produttività",
         "gain_prec_label": "Risparmio Precisione (2-Sigma)",
         "gain_scrap_label": "Risparmio Scarto Ridotto",
-        "payback_months": "Mesi per rientro Extra CAPEX"
+        "payback_months": "Mesi per rientro Extra CAPEX",
+        "crossover_title": "Extra Profitto Cumulativo (Premium vs Std)"
     },
     "Deutsch": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -74,7 +76,8 @@ lang_dict = {
         "gain_prod_label": "Zusätzlicher Produktionsgewinn",
         "gain_prec_label": "Präzisionseinsparungen (2-Sigma)",
         "gain_scrap_label": "Einsparungen durch Ausschuss",
-        "payback_months": "Monate bis zur Amortisation"
+        "payback_months": "Monate bis zur Amortisation",
+        "crossover_title": "Kumulierter Zusatzgewinn (Premium vs. Std.)"
     },
     "Español": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -97,7 +100,8 @@ lang_dict = {
         "gain_prod_label": "Ganancia por Productividad",
         "gain_prec_label": "Ahorro por Precisión (2-Sigma)",
         "gain_scrap_label": "Ahorro por Scarto Reducido",
-        "payback_months": "Meses para amortizar Extra CAPEX"
+        "payback_months": "Meses para amortizar Extra CAPEX",
+        "crossover_title": "Beneficio Extra Acumulado (Premium vs Std)"
     },
     "العربية": {
         "title": "مستشار استراتيجية عائد الاستثمار في البثق",
@@ -120,7 +124,8 @@ lang_dict = {
         "gain_prod_label": "ربح الإنتاجية الإضافي",
         "gain_prec_label": "توفير الدقة (2-سيجما)",
         "gain_scrap_label": "توفير تقليل الهالك",
-        "payback_months": "أشهر لاسترداد الإنفاق الرأسمالي الإضافي"
+        "payback_months": "أشهر لاسترداد الإنفاق الرأسمالي الإضافي",
+        "crossover_title": "إجمالي الربح الإضافي (الممتاز مقابل القياسي)"
     }
 }
 
@@ -218,12 +223,13 @@ with c1:
     fig_pie.update_layout(title=t['factor_dist'], paper_bgcolor='white', plot_bgcolor='white')
     st.plotly_chart(fig_pie, use_container_width=True)
 with c2:
-    yrs = list(range(11)); fa = [(-ca + (marga * i)) * cambio for i in yrs]; fp = [(-cp + (margp * i)) * cambio for i in yrs]
-    fig_line = go.Figure()
-    fig_line.add_trace(go.Scatter(x=yrs, y=fa, name="Standard", line=dict(color='#7F7F7F', dash='dot', width=2)))
-    fig_line.add_trace(go.Scatter(x=yrs, y=fp, name="Premium", line=dict(color='#00CC96', width=4)))
-    fig_line.update_layout(title="Asset Cash Flow Projection", paper_bgcolor='white', plot_bgcolor='white')
-    st.plotly_chart(fig_line, use_container_width=True)
+    yrs_cross = [i/4 for i in range(41)] # Quarterly for 10 years
+    extra_profit_cum = [(-extra_capex + (extra_margin_yr * y)) * cambio for y in yrs_cross]
+    fig_cross = go.Figure()
+    fig_cross.add_trace(go.Scatter(x=yrs_cross, y=extra_profit_cum, name="Net Premium Advantage", line=dict(color='#00CC96', width=4), fill='tozeroy'))
+    fig_cross.add_hline(y=0, line_dash="dash", line_color="red", annotation_text="Break-even Point")
+    fig_cross.update_layout(title=t['crossover_title'], xaxis_title="Years", yaxis_title=f"Net Surplus ({simbolo})", paper_bgcolor='white', plot_bgcolor='white')
+    st.plotly_chart(fig_cross, use_container_width=True)
 
 st.divider()
 meeting_notes = st.text_area(t['notes_label'], placeholder=t['notes_placeholder'], height=150)
@@ -257,7 +263,7 @@ def create_pdf():
     with tempfile.TemporaryDirectory() as tmpdir:
         p1, p2 = os.path.join(tmpdir, "p1.png"), os.path.join(tmpdir, "p2.png")
         fig_pie.write_image(p1, engine="kaleido", scale=3, width=700, height=500)
-        fig_line.write_image(p2, engine="kaleido", scale=3, width=700, height=500)
+        fig_cross.write_image(p2, engine="kaleido", scale=3, width=700, height=500)
         pdf.image(p1, x=10, y=y_start_charts, w=85); pdf.image(p2, x=105, y=y_start_charts, w=85)
     
     pdf.set_y(y_start_charts + 75)
