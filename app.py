@@ -12,29 +12,6 @@ def clean_text(text):
 
 # 1. DIZIONARIO TRADUZIONI COMPLETO
 lang_dict = {
-    "Italiano": {
-        "title": "ROI Extrusion Strategic Advisor",
-        "tech_comp": "📊 Comparazione Tecnica ed Operativa",
-        "fin_comp": "💰 Performance Asset e Rendimento Finanziario",
-        "res_title": "🏁 Risultati Analisi ROI",
-        "download_pdf": "📩 Scarica Report Strategico COMPLETO (PDF)",
-        "annual_prod": "Produzione Annua Netta",
-        "margin_yr": "Margine Operativo Annuo",
-        "roi_ann": "ROI Annualizzato",
-        "yield_5y": "Rendimento Totale a 5 Anni (Yield)",
-        "factor_dist": "Distribuzione Risparmi",
-        "line_a": "Linea Standard",
-        "line_b": "Linea Premium",
-        "line_c": "Linea Fusion",
-        "notes_label": "Note del Meeting / Osservazioni Strategiche",
-        "notes_placeholder": "Inserisci accordi, sconti o osservazioni...",
-        "payback_months": "Mesi per rientro Extra CAPEX",
-        "crossover_title": "Extra Profitto Cumulativo (vs Std)",
-        "t_prod": "Produzione Annua",
-        "t_oee": "Efficienza (OEE)",
-        "t_scrap": "Scarto Materiale",
-        "t_cons": "Consumo Specifico"
-    },
     "English": {
         "title": "ROI Extrusion Strategic Advisor",
         "tech_comp": "📊 Technical & Operational Comparison",
@@ -56,7 +33,42 @@ lang_dict = {
         "t_prod": "Annual Production",
         "t_oee": "Efficiency (OEE)",
         "t_scrap": "Material Scrap",
-        "t_cons": "Spec. Consumption"
+        "t_cons": "Spec. Consumption",
+        "chart_prod": "Productivity",
+        "chart_prec": "Precision",
+        "chart_scrap": "Scrap Recovery",
+        "chart_tech": "Tech/Material Saving",
+        "chart_years": "Years",
+        "chart_profit": "Net Surplus"
+    },
+    "Italiano": {
+        "title": "ROI Extrusion Strategic Advisor",
+        "tech_comp": "📊 Comparazione Tecnica ed Operativa",
+        "fin_comp": "💰 Performance Asset e Rendimento Finanziario",
+        "res_title": "🏁 Risultati Analisi ROI",
+        "download_pdf": "📩 Scarica Report Strategico COMPLETO (PDF)",
+        "annual_prod": "Produzione Annua Netta",
+        "margin_yr": "Margine Operativo Annuo",
+        "roi_ann": "ROI Annualizzato",
+        "yield_5y": "Rendimento Totale a 5 Anni (Yield)",
+        "factor_dist": "Distribuzione Risparmi",
+        "line_a": "Linea Standard",
+        "line_b": "Linea Premium",
+        "line_c": "Linea Fusion",
+        "notes_label": "Note del Meeting / Osservazioni Strategiche",
+        "notes_placeholder": "Inserisci accordi, sconti o osservazioni...",
+        "payback_months": "Mesi per rientro Extra CAPEX",
+        "crossover_title": "Extra Profitto Cumulativo (vs Std)",
+        "t_prod": "Produzione Annua",
+        "t_oee": "Efficienza (OEE)",
+        "t_scrap": "Scarto Materiale",
+        "t_cons": "Consumo Specifico",
+        "chart_prod": "Produttività",
+        "chart_prec": "Precisione",
+        "chart_scrap": "Recupero Scarti",
+        "chart_tech": "Risparmio Tec/Mat",
+        "chart_years": "Anni",
+        "chart_profit": "Surplus Netto"
     },
     "Deutsch": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -79,7 +91,13 @@ lang_dict = {
         "t_prod": "Jährliche Produktion",
         "t_oee": "Effizienz (OEE)",
         "t_scrap": "Materialausschuss",
-        "t_cons": "Spez. Verbrauch"
+        "t_cons": "Spez. Verbrauch",
+        "chart_prod": "Produktivität",
+        "chart_prec": "Präzision",
+        "chart_scrap": "Ausschuss",
+        "chart_tech": "Tech/Mat Ersparnis",
+        "chart_years": "Jahre",
+        "chart_profit": "Nettoüberschuss"
     },
     "Español": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -102,7 +120,13 @@ lang_dict = {
         "t_prod": "Producción Anual",
         "t_oee": "Eficiencia (OEE)",
         "t_scrap": "Desecho de Material",
-        "t_cons": "Consumo Específico"
+        "t_cons": "Consumo Específico",
+        "chart_prod": "Productividad",
+        "chart_prec": "Precisión",
+        "chart_scrap": "Recuperación",
+        "chart_tech": "Ahorro Tec/Mat",
+        "chart_years": "Años",
+        "chart_profit": "Excedente Neto"
     },
     "العربية": {
         "title": "مستشار استراتيجية عائد الاستثمار",
@@ -125,12 +149,19 @@ lang_dict = {
         "t_prod": "الإنتاج السنوي",
         "t_oee": "كفاءة المعدات",
         "t_scrap": "خردة المواد",
-        "t_cons": "استهلاك الطاقة"
+        "t_cons": "استهلاك الطاقة",
+        "chart_prod": "إنتاجية",
+        "chart_prec": "دقة",
+        "chart_scrap": "استعادة الخردة",
+        "chart_tech": "توفير المواد",
+        "chart_years": "سنوات",
+        "chart_profit": "الفائض الصافي"
     }
 }
 
 st.set_page_config(page_title="ROI Advisor", layout="wide")
-lingua = st.sidebar.selectbox("Language / Lingua / Sprache / Idioma / اللغة", list(lang_dict.keys()))
+# Lingua iniziale: English
+lingua = st.sidebar.selectbox("Language Selection", list(lang_dict.keys()))
 t = lang_dict[lingua]
 st.title(t['title'])
 
@@ -232,32 +263,32 @@ st.table(pd.DataFrame(fin_data))
 st.header(t['res_title'])
 c1, c2 = st.columns(2)
 with c1:
-    labels = ['Produttività', 'Precisione', 'Scarti', 'Tech/Material Saving']
+    labels = [t['chart_prod'], t['chart_prec'], t['chart_scrap'], t['chart_tech']]
     if not show_fusion:
         fig = go.Figure(data=[go.Pie(labels=labels, values=[max(0.1, gp_prod), max(0.1, gp_prec), max(0.1, gp_scrap), max(0.1, gp_tech)], hole=.4)])
-        fig.update_layout(title=f"{t['factor_dist']} (Premium vs Std)")
+        fig.update_layout(title=f"{t['factor_dist']} ({t['line_b']} vs {t['line_a']})")
         st.plotly_chart(fig, use_container_width=True)
     else:
         sc1, sc2 = st.columns(2)
         with sc1:
             f1 = go.Figure(data=[go.Pie(labels=labels, values=[max(0.1, gp_prod), max(0.1, gp_prec), max(0.1, gp_scrap), max(0.1, gp_tech)], hole=.4)])
-            f1.update_layout(title="Premium vs Std", showlegend=False); st.plotly_chart(f1, use_container_width=True)
+            f1.update_layout(title=f"{t['line_b']} vs {t['line_a']}", showlegend=False); st.plotly_chart(f1, use_container_width=True)
         with sc2:
             f2 = go.Figure(data=[go.Pie(labels=labels, values=[max(0.1, gf_prod), max(0.1, gf_prec), max(0.1, gf_scrap), max(0.1, gf_tech)], hole=.4)])
-            f2.update_layout(title="Fusion vs Std", showlegend=False); st.plotly_chart(f2, use_container_width=True)
+            f2.update_layout(title=f"{t['line_c']} vs {t['line_a']}", showlegend=False); st.plotly_chart(f2, use_container_width=True)
 
 with c2:
     yrs = [i/4 for i in range(41)]
     fig_cross = go.Figure()
-    fig_cross.add_trace(go.Scatter(x=yrs, y=[(-(cp-ca)+(margp-marga)*y)*cambio for y in yrs], name="Premium vs Std", line=dict(color='#00CC96')))
+    fig_cross.add_trace(go.Scatter(x=yrs, y=[(-(cp-ca)+(margp-marga)*y)*cambio for y in yrs], name=f"{t['line_b']} vs {t['line_a']}", line=dict(color='#00CC96')))
     if show_fusion:
-        fig_cross.add_trace(go.Scatter(x=yrs, y=[(-(cf-ca)+(margf-marga)*y)*cambio for y in yrs], name="Fusion vs Std", line=dict(color='#AB63FA')))
+        fig_cross.add_trace(go.Scatter(x=yrs, y=[(-(cf-ca)+(margf-marga)*y)*cambio for y in yrs], name=f"{t['line_c']} vs {t['line_a']}", line=dict(color='#AB63FA')))
     fig_cross.add_hline(y=0, line_dash="dash", line_color="red")
-    fig_cross.update_layout(title=t['crossover_title'], xaxis_title="Anni")
+    fig_cross.update_layout(title=t['crossover_title'], xaxis_title=t['chart_years'], yaxis_title=t['chart_profit'])
     st.plotly_chart(fig_cross, use_container_width=True)
 
 st.divider()
 notes = st.text_area(t['notes_label'], placeholder=t['notes_placeholder'], height=100)
 
 if st.button(t['download_pdf']):
-    st.info("Generazione report in corso...")
+    st.info("Generating report...")
