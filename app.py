@@ -110,7 +110,7 @@ lang_dict = {
 }
 
 st.set_page_config(page_title="ROI Advisor", layout="wide")
-lingua = st.sidebar.selectbox("Language / Lingua / Sprache / Idioma / اللغة", ["Italiano", "English", "Deutsch", "Español", "العربية"])
+lingua = st.sidebar.selectbox("Language / Lingua / Sprache / Idioma / اللغة", list(lang_dict.keys()))
 t = lang_dict[lingua]
 st.title(t['title'])
 
@@ -157,7 +157,7 @@ if show_fusion:
         st.subheader(f"🌀 {t['line_c']}")
         cf = st.number_input("CAPEX Fusion", value=2200000)
         pf = st.number_input("Output (kg/h) Fusion", value=440)
-        of = op # Stesso OEE del Premium come richiesto
+        of = op # OEE uguale a Premium come richiesto
         st.info(f"OEE Fusion: {of}% (Linked to Premium)")
         sf = st.number_input("2-Sigma (%) Fusion", value=1.5)
         scrf = st.number_input("Scrap (%) Fusion", value=1.5)
@@ -166,64 +166,71 @@ if show_fusion:
         c_poly_f = st.number_input(f"Polymer Cost Fusion ({simbolo}/kg)", value=1.35 * cambio) / cambio
 
 # --- CALCULATIONS ---
-def calc_metrics(p, o, s, scr, cs, m, capex, cost_p):
+
+# 1. Calcolo Linea Standard (Base)
+ton_a = (pa * h_an * (oa/100) * (1 - scra/100)) / 1000
+mat_eff_a = 1 - (tol_m - sa)/100
+marga = (ton_a * 1000 * p_sell) - (pa * h_an * (oa/100) * c_poly * mat_eff_a) - (pa * h_an * (oa/100) * csa * c_ene) - (ca * ma_std/100)
+
+def get_performance_vs_std(p, o, s, scr, cs, m, capex, cost_p):
     ton = (p * h_an * (o/100) * (1 - scr/100)) / 1000
-    # Margine = Ricavi - (Costo Materiale + Costo Energia + Manutenzione)
-    # Consideriamo il materiale risparmiato dalla precisione (2-sigma)
     mat_eff = 1 - (tol_m - s)/100
     margin = (ton * 1000 * p_sell) - (p * h_an * (o/100) * cost_p * mat_eff) - (p * h_an * (o/100) * cs * c_ene) - (capex * m/100)
     
-    # Guadagni isolati rispetto a Standard per il grafico a torta
+    # Delta Driver per il grafico a torta
     g_prod = ((ton - ton_a) * 1000 * (p_sell - cost_p))
     g_prec = (p * h_an * (o/100)) * cost_p * ((sa - s)/100)
     g_scrap = (p * h_an * (o/100)) * cost_p * ((scra - scr)/100)
-    g_ene_maint = (pa * h_an * (oa/100) * csa * c_ene - p * h_an * (o/100) * cs * c_ene) + (ca * ma_std/100 - capex * m/100)
-    g_mat_diff = (ton * 1000) * (c_poly - cost_p) if cost_p < c_poly else 0
+    # Efficienza tecnica include energia, manutenzione e differenza costo polimero diretto (per Fusion)
+    g_tech_energy = (pa * h_an * (oa/100) * csa * c_ene - p * h_an * (o/100) * cs * c_ene)
+    g_maint = (ca * ma_std/100 - capex * m/100)
+    g_mat_base = (ton * 1000) * (c_poly - cost_p) if cost_p < c_poly else 0
     
-    return ton, margin, g_prod, g_prec, g_scrap, (g_ene_maint + g_mat_diff)
+    return ton, margin, g_prod, g_prec, g_scrap, (g_tech_energy + g_maint + g_mat_base)
 
-# Esecuzione Calcoli
-ton_a, marga, _, _, _, _ = calc_metrics(pa, oa, sa, scra, csa, ma_std, ca, c_poly)
-ton_p, margp, gp_prod, gp_prec, gp_scrap, gp_tech = calc_metrics(pp, op, sp, scrp, csp, mp_pre, cp, c_poly)
+# 2. Calcolo Linee evolute
+ton_p, margp, gp_prod, gp_prec, gp_scrap, gp_tech = get_performance_vs_std(pp, op, sp, scrp, csp, mp_pre, cp, c_poly)
 
 if show_fusion:
-    ton_f, margf, gf_prod, gf_prec, gf_scrap, gf_tech = calc_metrics(pf, of, sf, scrf, csf, mf_fus, cf, c_poly_f)
+    ton_f, margf, gf_prod, gf_prec, gf_scrap, gf_tech = get_performance_vs_std(pf, of, sf, scrf, csf, mf_fus, cf, c_poly_f)
 
 # --- TABLES ---
 st.subheader(t['tech_comp'])
-tech_df = {
-    "Metric": ["Annual Prod.", "Efficiency (OEE)", "Material Scrap", "Spec. Consumption"],
+tech_data = {
+    "Metric": ["Produzione Annua", "Efficienza (OEE)", "Scarto Materiale", "Consumo Specifico"],
     "Standard": [f"{ton_a:,.0f} T", f"{oa}%", f"{scra}%", f"{csa} kWh/kg"],
     "Premium": [f"{ton_p:,.0f} T", f"{op}%", f"{scrp}%", f"{csp} kWh/kg"]
 }
-if show_fusion: tech_df["Fusion"] = [f"{ton_f:,.0f} T", f"{of}%", f"{scrf}%", f"{csf} kWh/kg"]
-st.table(pd.DataFrame(tech_df))
+if show_fusion:
+    tech_data["Fusion"] = [f"{ton_f:,.0f} T", f"{of}%", f"{scrf}%", f"{csf} kWh/kg"]
+st.table(pd.DataFrame(tech_data))
 
 st.subheader(t['fin_comp'])
-fin_df = {
+fin_data = {
     "Indicator": [t['margin_yr'], t['roi_ann'], t['yield_5y']],
     "Standard": [f"{simbolo} {marga*cambio:,.0f}", f"{(marga/ca)*100:.1f}%", f"{(marga*5/ca)*100:.1f}%"],
     "Premium": [f"{simbolo} {margp*cambio:,.0f}", f"{(margp/cp)*100:.1f}%", f"{(margp*5/cp)*100:.1f}%"]
 }
-if show_fusion: fin_df["Fusion"] = [f"{simbolo} {margf*cambio:,.0f}", f"{(margf/cf)*100:.1f}%", f"{(margf*5/cf)*100:.1f}%"]
-st.table(pd.DataFrame(fin_df))
+if show_fusion:
+    fin_data["Fusion"] = [f"{simbolo} {margf*cambio:,.0f}", f"{(margf/cf)*100:.1f}%", f"{(margf*5/cf)*100:.1f}%"]
+st.table(pd.DataFrame(fin_data))
 
 # --- CHARTS ---
 st.header(t['res_title'])
 c1, c2 = st.columns(2)
 with c1:
-    labels = ['Produttività', 'Precisione', 'Scarti', 'Tech/Material']
+    labels = ['Produttività', 'Precisione', 'Scarti', 'Tech/Material Saving']
     if not show_fusion:
-        fig = go.Figure(data=[go.Pie(labels=labels, values=[max(0,gp_prod), max(0,gp_prec), max(0,gp_scrap), max(0,gp_tech)], hole=.4)])
+        fig = go.Figure(data=[go.Pie(labels=labels, values=[max(0.1, gp_prod), max(0.1, gp_prec), max(0.1, gp_scrap), max(0.1, gp_tech)], hole=.4)])
         fig.update_layout(title="Drivers di Guadagno: Premium vs Std")
         st.plotly_chart(fig, use_container_width=True)
     else:
         sc1, sc2 = st.columns(2)
         with sc1:
-            f1 = go.Figure(data=[go.Pie(labels=labels, values=[max(0,gp_prod), max(0,gp_prec), max(0,gp_scrap), max(0,gp_tech)], hole=.4)])
+            f1 = go.Figure(data=[go.Pie(labels=labels, values=[max(0.1, gp_prod), max(0.1, gp_prec), max(0.1, gp_scrap), max(0.1, gp_tech)], hole=.4)])
             f1.update_layout(title="Premium vs Std", showlegend=False); st.plotly_chart(f1, use_container_width=True)
         with sc2:
-            f2 = go.Figure(data=[go.Pie(labels=labels, values=[max(0,gf_prod), max(0,gf_prec), max(0,gf_scrap), max(0,gf_tech)], hole=.4)])
+            f2 = go.Figure(data=[go.Pie(labels=labels, values=[max(0.1, gf_prod), max(0.1, gf_prec), max(0.1, gf_scrap), max(0.1, gf_tech)], hole=.4)])
             f2.update_layout(title="Fusion vs Std", showlegend=False); st.plotly_chart(f2, use_container_width=True)
 
 with c2:
@@ -240,4 +247,4 @@ st.divider()
 notes = st.text_area(t['notes_label'], placeholder=t['notes_placeholder'], height=100)
 
 if st.button(t['download_pdf']):
-    st.write("Generazione report in corso...")
+    st.info("Generazione report in corso...")
