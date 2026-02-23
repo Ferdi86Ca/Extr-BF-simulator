@@ -29,7 +29,11 @@ lang_dict = {
         "notes_label": "Note del Meeting / Osservazioni Strategiche",
         "notes_placeholder": "Inserisci accordi, sconti o osservazioni...",
         "payback_months": "Mesi per rientro Extra CAPEX",
-        "crossover_title": "Extra Profitto Cumulativo (vs Std)"
+        "crossover_title": "Extra Profitto Cumulativo (vs Std)",
+        "t_prod": "Produzione Annua",
+        "t_oee": "Efficienza (OEE)",
+        "t_scrap": "Scarto Materiale",
+        "t_cons": "Consumo Specifico"
     },
     "English": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -48,7 +52,11 @@ lang_dict = {
         "notes_label": "Meeting Notes",
         "notes_placeholder": "Enter notes...",
         "payback_months": "Months to Payback Extra CAPEX",
-        "crossover_title": "Cumulative Extra Profit (vs Std)"
+        "crossover_title": "Cumulative Extra Profit (vs Std)",
+        "t_prod": "Annual Production",
+        "t_oee": "Efficiency (OEE)",
+        "t_scrap": "Material Scrap",
+        "t_cons": "Spec. Consumption"
     },
     "Deutsch": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -67,7 +75,11 @@ lang_dict = {
         "notes_label": "Notizen",
         "notes_placeholder": "Notizen qui...",
         "payback_months": "Amortisation (Monate)",
-        "crossover_title": "Zusatzgewinn"
+        "crossover_title": "Zusatzgewinn",
+        "t_prod": "Jährliche Produktion",
+        "t_oee": "Effizienz (OEE)",
+        "t_scrap": "Materialausschuss",
+        "t_cons": "Spez. Verbrauch"
     },
     "Español": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -86,7 +98,11 @@ lang_dict = {
         "notes_label": "Notas",
         "notes_placeholder": "Escribir notas...",
         "payback_months": "Meses retorno",
-        "crossover_title": "Beneficio Extra"
+        "crossover_title": "Beneficio Extra",
+        "t_prod": "Producción Anual",
+        "t_oee": "Eficiencia (OEE)",
+        "t_scrap": "Desecho de Material",
+        "t_cons": "Consumo Específico"
     },
     "العربية": {
         "title": "مستشار استراتيجية عائد الاستثمار",
@@ -105,7 +121,11 @@ lang_dict = {
         "notes_label": "ملاحظات",
         "notes_placeholder": "أدخل الملاحظات هنا...",
         "payback_months": "أشهر الاسترداد",
-        "crossover_title": "إجمالي الربح الإضافي"
+        "crossover_title": "إجمالي الربح الإضافي",
+        "t_prod": "الإنتاج السنوي",
+        "t_oee": "كفاءة المعدات",
+        "t_scrap": "خردة المواد",
+        "t_cons": "استهلاك الطاقة"
     }
 }
 
@@ -157,8 +177,8 @@ if show_fusion:
         st.subheader(f"🌀 {t['line_c']}")
         cf = st.number_input("CAPEX Fusion", value=2200000)
         pf = st.number_input("Output (kg/h) Fusion", value=440)
-        of = op # OEE uguale a Premium come richiesto
-        st.info(f"OEE Fusion: {of}% (Linked to Premium)")
+        of = op # OEE uguale a Premium
+        st.info(f"OEE Fusion: {of}%")
         sf = st.number_input("2-Sigma (%) Fusion", value=1.5)
         scrf = st.number_input("Scrap (%) Fusion", value=1.5)
         mf_fus = st.number_input("Maint. % Fusion", value=1.5)
@@ -166,8 +186,6 @@ if show_fusion:
         c_poly_f = st.number_input(f"Polymer Cost Fusion ({simbolo}/kg)", value=1.35 * cambio) / cambio
 
 # --- CALCULATIONS ---
-
-# 1. Calcolo Linea Standard (Base)
 ton_a = (pa * h_an * (oa/100) * (1 - scra/100)) / 1000
 mat_eff_a = 1 - (tol_m - sa)/100
 marga = (ton_a * 1000 * p_sell) - (pa * h_an * (oa/100) * c_poly * mat_eff_a) - (pa * h_an * (oa/100) * csa * c_ene) - (ca * ma_std/100)
@@ -176,19 +194,14 @@ def get_performance_vs_std(p, o, s, scr, cs, m, capex, cost_p):
     ton = (p * h_an * (o/100) * (1 - scr/100)) / 1000
     mat_eff = 1 - (tol_m - s)/100
     margin = (ton * 1000 * p_sell) - (p * h_an * (o/100) * cost_p * mat_eff) - (p * h_an * (o/100) * cs * c_ene) - (capex * m/100)
-    
-    # Delta Driver per il grafico a torta
     g_prod = ((ton - ton_a) * 1000 * (p_sell - cost_p))
     g_prec = (p * h_an * (o/100)) * cost_p * ((sa - s)/100)
     g_scrap = (p * h_an * (o/100)) * cost_p * ((scra - scr)/100)
-    # Efficienza tecnica include energia, manutenzione e differenza costo polimero diretto (per Fusion)
     g_tech_energy = (pa * h_an * (oa/100) * csa * c_ene - p * h_an * (o/100) * cs * c_ene)
     g_maint = (ca * ma_std/100 - capex * m/100)
     g_mat_base = (ton * 1000) * (c_poly - cost_p) if cost_p < c_poly else 0
-    
     return ton, margin, g_prod, g_prec, g_scrap, (g_tech_energy + g_maint + g_mat_base)
 
-# 2. Calcolo Linee evolute
 ton_p, margp, gp_prod, gp_prec, gp_scrap, gp_tech = get_performance_vs_std(pp, op, sp, scrp, csp, mp_pre, cp, c_poly)
 
 if show_fusion:
@@ -197,7 +210,7 @@ if show_fusion:
 # --- TABLES ---
 st.subheader(t['tech_comp'])
 tech_data = {
-    "Metric": ["Produzione Annua", "Efficienza (OEE)", "Scarto Materiale", "Consumo Specifico"],
+    "Metric": [t['t_prod'], t['t_oee'], t['t_scrap'], t['t_cons']],
     "Standard": [f"{ton_a:,.0f} T", f"{oa}%", f"{scra}%", f"{csa} kWh/kg"],
     "Premium": [f"{ton_p:,.0f} T", f"{op}%", f"{scrp}%", f"{csp} kWh/kg"]
 }
@@ -222,7 +235,7 @@ with c1:
     labels = ['Produttività', 'Precisione', 'Scarti', 'Tech/Material Saving']
     if not show_fusion:
         fig = go.Figure(data=[go.Pie(labels=labels, values=[max(0.1, gp_prod), max(0.1, gp_prec), max(0.1, gp_scrap), max(0.1, gp_tech)], hole=.4)])
-        fig.update_layout(title="Drivers di Guadagno: Premium vs Std")
+        fig.update_layout(title=f"{t['factor_dist']} (Premium vs Std)")
         st.plotly_chart(fig, use_container_width=True)
     else:
         sc1, sc2 = st.columns(2)
