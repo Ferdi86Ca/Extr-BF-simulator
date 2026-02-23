@@ -1,7 +1,15 @@
 import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
+from fpdf import FPDF
+import tempfile
+import os
 import re
+
+# Funzione per pulire il testo per il PDF (evita errori con caratteri non latin-1)
+def clean_text(text):
+    if text is None: return ""
+    return re.sub(r'[^\x00-\xff]+', '', str(text))
 
 # --- DIZIONARIO TRADUZIONI COMPLETO ---
 lang_dict = {
@@ -33,7 +41,8 @@ lang_dict = {
         "roi_ann": "Annualized ROI",
         "yield_5y": "5-Year Total Return (Yield)",
         "extra_5y": "5-Year Extra Profit (vs Std)",
-        "factor_dist": "Savings Distribution"
+        "factor_dist": "Savings Distribution",
+        "market_settings": "Market Context Settings"
     },
     "Italiano": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -63,67 +72,8 @@ lang_dict = {
         "roi_ann": "ROI Annualizzato",
         "yield_5y": "Rendimento Totale a 5 Anni (Yield)",
         "extra_5y": "Extra Profitto 5 Anni (vs Std)",
-        "factor_dist": "Distribuzione Risparmi"
-    },
-    "Deutsch": {
-        "title": "ROI Extrusion Strategic Advisor",
-        "tech_comp": "📊 Technischer Vergleich",
-        "fin_comp": "💰 Finanzrendite",
-        "res_title": "🏁 ROI-Ergebnisse",
-        "download_pdf": "📩 PDF-Bericht herunterladen",
-        "line_a": "Standard",
-        "line_b": "Premium",
-        "line_c": "Fusion",
-        "notes_label": "Notizen",
-        "notes_placeholder": "Notizen qui...",
-        "payback_label": "Amortisationszeit (Jahre)",
-        "crossover_title": "Zusatzgewinn",
-        "t_prod": "Jährliche Produktion",
-        "t_oee": "Effizienz (OEE)",
-        "t_scrap": "Materialausschuss",
-        "t_cons": "Spez. Verbrauch",
-        "chart_prod": "Produktivität",
-        "chart_prec": "Präzision",
-        "chart_scrap": "Ausschuss",
-        "chart_tech": "Tech/Mat Ersparnis",
-        "chart_years": "Jahre",
-        "chart_profit": "Nettoüberschuss",
-        "cost_kg": "Produktionskosten pro kg",
-        "margin_yr": "Operativer Marge",
-        "roi_ann": "ROI",
-        "yield_5y": "5-Jahres-Rendite",
-        "extra_5y": "5-Jahres-Extraprofit",
-        "factor_dist": "Einsparungen"
-    },
-    "Español": {
-        "title": "ROI Extrusion Strategic Advisor",
-        "tech_comp": "📊 Comparativa Técnica",
-        "fin_comp": "💰 Rendimiento Financiero",
-        "res_title": "🏁 Resultados ROI",
-        "download_pdf": "📩 Descargar PDF",
-        "line_a": "Estándar",
-        "line_b": "Premium",
-        "line_c": "Fusion",
-        "notes_label": "Notas",
-        "notes_placeholder": "Escribir notas...",
-        "payback_label": "Periodo de Retorno (Años)",
-        "crossover_title": "Beneficio Extra",
-        "t_prod": "Producción Anual",
-        "t_oee": "Eficiencia (OEE)",
-        "t_scrap": "Desecho de Material",
-        "t_cons": "Consumo Específico",
-        "chart_prod": "Productividad",
-        "chart_prec": "Precisión",
-        "chart_scrap": "Recuperación",
-        "chart_tech": "Ahorro Tec/Mat",
-        "chart_years": "Años",
-        "chart_profit": "Excedente Neto",
-        "cost_kg": "Costo de producción por kg",
-        "margin_yr": "Margen Anual",
-        "roi_ann": "ROI",
-        "yield_5y": "Rendimiento 5 años",
-        "extra_5y": "Extra Beneficio 5 años",
-        "factor_dist": "Distribución"
+        "factor_dist": "Distribuzione Risparmi",
+        "market_settings": "Configurazione Scenario di Mercato"
     }
 }
 
@@ -176,70 +126,58 @@ if show_fusion:
         cf = st.number_input("CAPEX Fusion", value=2200000)
         pf = st.number_input("Output (kg/h) Fusion", value=440)
         of = op 
-        st.info(f"OEE Fusion: {of}%")
         sf = st.number_input("2-Sigma (%) Fusion", value=1.5)
         scrf = st.number_input("Scrap (%) Fusion", value=1.5)
         mf_fus = st.number_input("Maint. % Fusion", value=1.5)
         csf = st.number_input("kWh/kg Fusion", value=0.28)
         c_poly_f = st.number_input(f"Polymer Cost Fusion ({simbolo}/kg)", value=1.35 * cambio) / cambio
+else:
+    c_poly_f = c_poly
 
-# --- CALCULATIONS LOGIC ---
+# --- CALCULATIONS ---
 def get_metrics(p, o, s, scr, cs, m, capex, cost_p, is_base=False):
     ton = (p * h_an * (o/100) * (1 - scr/100)) / 1000
     mat_eff = 1 - (tol_m - s)/100
     opex_annuo = (p * h_an * (o/100) * cost_p * mat_eff) + (p * h_an * (o/100) * cs * c_ene) + (capex * m/100)
     margin = (ton * 1000 * p_sell) - opex_annuo
-    costo_kg = opex_annuo / (ton * 1000)
+    costo_kg = opex_annuo / (ton * 1000) if ton > 0 else 0
     payback = capex / margin if margin > 0 else 99
-    
-    g_prod, g_prec, g_scrap, g_tech = 0, 0, 0, 0
-    if not is_base:
-        g_prod = ((ton - ton_a) * 1000 * (p_sell - cost_p))
-        g_prec = (p * h_an * (o/100)) * cost_p * ((sa - s)/100)
-        g_scrap = (p * h_an * (o/100)) * cost_p * ((scra - scr)/100)
-        g_tech = (opex_annuo_std * (ton/ton_a) - opex_annuo) 
+    return ton, margin, costo_kg, payback, opex_annuo
 
-    return ton, margin, costo_kg, payback, g_prod, g_prec, g_scrap, g_tech
-
-# Esecuzione
-ton_a, marga, ckg_a, pb_a, _, _, _, _ = get_metrics(pa, oa, sa, scra, csa, ma_std, ca, c_poly, True)
-opex_annuo_std = (pa * h_an * (oa/100) * c_poly * (1 - (tol_m - sa)/100)) + (pa * h_an * (oa/100) * csa * c_ene) + (ca * ma_std/100)
-
-ton_p, margp, ckg_p, pb_p, gp_prod, gp_prec, gp_scrap, gp_tech = get_metrics(pp, op, sp, scrp, csp, mp_pre, cp, c_poly)
+ton_a, marga, ckg_a, pb_a, opex_a = get_metrics(pa, oa, sa, scra, csa, ma_std, ca, c_poly, True)
+ton_p, margp, ckg_p, pb_p, opex_p = get_metrics(pp, op, sp, scrp, csp, mp_pre, cp, c_poly)
 if show_fusion:
-    ton_f, margf, ckg_f, pb_f, gf_prod, gf_prec, gf_scrap, gf_tech = get_metrics(pf, of, sf, scrf, csf, mf_fus, cf, c_poly_f)
+    ton_f, margf, ckg_f, pb_f, opex_f = get_metrics(pf, of, sf, scrf, csf, mf_fus, cf, c_poly_f)
 
-# --- TABLES ---
+# --- DISPLAY TABLES ---
 st.subheader(t['tech_comp'])
-tech_data = {
+df_tech = pd.DataFrame({
     "Metric": [t['t_prod'], t['t_oee'], t['t_scrap'], t['t_cons']],
     "Standard": [f"{ton_a:,.0f} T", f"{oa}%", f"{scra}%", f"{csa} kWh/kg"],
     "Premium": [f"{ton_p:,.0f} T", f"{op}%", f"{scrp}%", f"{csp} kWh/kg"]
-}
-if show_fusion: tech_data["Fusion"] = [f"{ton_f:,.0f} T", f"{of}%", f"{scrf}%", f"{csf} kWh/kg"]
-st.table(pd.DataFrame(tech_data))
+})
+if show_fusion: df_tech["Fusion"] = [f"{ton_f:,.0f} T", f"{of}%", f"{scrf}%", f"{csf} kWh/kg"]
+st.table(df_tech)
 
 st.subheader(t['fin_comp'])
-fin_data = {
+df_fin = pd.DataFrame({
     "Indicator": [t['cost_kg'], t['margin_yr'], t['roi_ann'], t['payback_label'], t['extra_5y']],
     "Standard": [f"{simbolo} {ckg_a*cambio:.3f}", f"{simbolo} {marga*cambio:,.0f}", f"{(marga/ca)*100:.1f}%", f"{pb_a:.2f}", "-"],
     "Premium": [f"{simbolo} {ckg_p*cambio:.3f}", f"{simbolo} {margp*cambio:,.0f}", f"{(margp/cp)*100:.1f}%", f"{pb_p:.2f}", f"{simbolo} {(margp-marga)*5*cambio:,.0f}"]
-}
+})
 if show_fusion:
-    fin_data["Fusion"] = [f"{simbolo} {ckg_f*cambio:.3f}", f"{simbolo} {margf*cambio:,.0f}", f"{(margf/cf)*100:.1f}%", f"{pb_f:.2f}", f"{simbolo} {(margf-marga)*5*cambio:,.0f}"]
-st.table(pd.DataFrame(fin_data))
+    df_fin["Fusion"] = [f"{simbolo} {ckg_f*cambio:.3f}", f"{simbolo} {margf*cambio:,.0f}", f"{(margf/cf)*100:.1f}%", f"{pb_f:.2f}", f"{simbolo} {(margf-marga)*5*cambio:,.0f}"]
+st.table(df_fin)
 
 # --- CHARTS ---
 st.header(t['res_title'])
 c1, c2 = st.columns(2)
 with c1:
-    # Grafico Payback Comparison
     pb_names = [t['line_a'], t['line_b']]
     pb_values = [pb_a, pb_p]
     if show_fusion:
         pb_names.append(t['line_c'])
         pb_values.append(pb_f)
-    
     fig_pb = go.Figure(go.Bar(y=pb_names, x=pb_values, orientation='h', marker_color=['#636EFA', '#00CC96', '#AB63FA']))
     fig_pb.update_layout(title=t['payback_label'], xaxis_title=t['chart_years'], yaxis={'autorange': "reversed"})
     st.plotly_chart(fig_pb, use_container_width=True)
@@ -254,7 +192,71 @@ with c2:
     fig_cross.update_layout(title=t['crossover_title'], xaxis_title=t['chart_years'], yaxis_title=t['chart_profit'])
     st.plotly_chart(fig_cross, use_container_width=True)
 
-
-
 st.divider()
 notes = st.text_area(t['notes_label'], placeholder=t['notes_placeholder'], height=100)
+
+# --- PDF GENERATION ---
+if st.button(t['download_pdf']):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(190, 10, clean_text(t['title']), ln=True, align='C')
+    pdf.ln(10)
+
+    # Market Settings Section
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(190, 10, clean_text(t['market_settings']), ln=True)
+    pdf.set_font("Arial", '', 10)
+    pdf.cell(95, 8, f"Polymer Cost: {simbolo} {c_poly*cambio:.2f}/kg", border=1)
+    pdf.cell(95, 8, f"Selling Price: {simbolo} {p_sell*cambio:.2f}/kg", border=1, ln=True)
+    pdf.cell(95, 8, f"Energy Cost: {simbolo} {c_ene*cambio:.2f}/kWh", border=1)
+    pdf.cell(95, 8, f"Annual Hours: {h_an} h/yr", border=1, ln=True)
+    pdf.ln(5)
+
+    # Technical Table
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(190, 10, clean_text(t['tech_comp']), ln=True)
+    pdf.set_font("Arial", 'B', 9)
+    pdf.cell(50, 8, "Metric", border=1)
+    pdf.cell(45, 8, "Standard", border=1)
+    pdf.cell(45, 8, "Premium", border=1)
+    if show_fusion: pdf.cell(45, 8, "Fusion", border=1)
+    pdf.ln()
+    pdf.set_font("Arial", '', 9)
+    for i, row in df_tech.iterrows():
+        pdf.cell(50, 7, clean_text(row['Metric']), border=1)
+        pdf.cell(45, 7, clean_text(row['Standard']), border=1)
+        pdf.cell(45, 7, clean_text(row['Premium']), border=1)
+        if show_fusion: pdf.cell(45, 7, clean_text(row['Fusion']), border=1)
+        pdf.ln()
+    pdf.ln(5)
+
+    # Financial Table
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(190, 10, clean_text(t['fin_comp']), ln=True)
+    pdf.set_font("Arial", 'B', 9)
+    pdf.cell(50, 8, "Indicator", border=1)
+    pdf.cell(45, 8, "Standard", border=1)
+    pdf.cell(45, 8, "Premium", border=1)
+    if show_fusion: pdf.cell(45, 8, "Fusion", border=1)
+    pdf.ln()
+    pdf.set_font("Arial", '', 9)
+    for i, row in df_fin.iterrows():
+        pdf.cell(50, 7, clean_text(row['Indicator']), border=1)
+        pdf.cell(45, 7, clean_text(row['Standard']), border=1)
+        pdf.cell(45, 7, clean_text(row['Premium']), border=1)
+        if show_fusion: pdf.cell(45, 7, clean_text(row['Fusion']), border=1)
+        pdf.ln()
+
+    # Notes
+    if notes:
+        pdf.ln(5)
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(190, 10, clean_text(t['notes_label']), ln=True)
+        pdf.set_font("Arial", '', 10)
+        pdf.multi_cell(190, 8, clean_text(notes), border=1)
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        pdf.output(tmp.name)
+        with open(tmp.name, "rb") as f:
+            st.download_button(t['download_pdf'], f, file_name="Extrusion_ROI_Report.pdf", mime="application/pdf")
