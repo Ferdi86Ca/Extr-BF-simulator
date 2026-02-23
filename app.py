@@ -156,29 +156,28 @@ if show_fusion:
         c_poly_f = st.number_input(f"Polymer Cost Fusion ({simbolo}/kg)", value=1.35 * cambio) / cambio
 
 # --- CALCULATIONS & LOGIC ---
-# Standard
+# 1. Calcoli Base (Standard)
 ton_a = (pa * h_an * (oa/100) * (1 - scra/100)) / 1000
 marga = (ton_a*1000*p_sell) - ((pa*h_an*(oa/100)*c_poly) + (pa*h_an*(oa/100)*csa*c_ene) + (ca*ma_std/100))
 
-# Funzione per calcolare i guadagni rispetto allo standard
-def get_gains(p, o, s, scr, cs, m, capex, cost_p):
+# Funzione Helper per calcolare guadagni e margini
+def calc_line_performance(p, o, s, scr, cs, m, capex, cost_p):
     ton = (p * h_an * (o/100) * (1 - scr/100)) / 1000
     g_prod = (ton - ton_a) * 1000 * (p_sell - cost_p)
     g_prec = (p * h_an * (o/100)) * cost_p * ((tol_m - s)/100 - (tol_m - sa)/100)
     g_scrap = (p * h_an * (o/100)) * cost_p * ((scra - scr)/100)
     g_ene = (pa * h_an * (oa/100)) * (csa - cs) * c_ene
     g_maint = (ca * ma_std/100) - (capex * m/100)
-    # Per la Fusion aggiungiamo il delta costo materiale su tutta la produzione
-    g_mat_cost = (ton * 1000) * (c_poly - cost_p) if cost_p < c_poly else 0
-    return g_prod, g_prec, g_scrap, g_ene + g_maint + g_mat_cost
+    g_mat_saving = (ton * 1000) * (c_poly - cost_p) if cost_p < c_poly else 0
+    total_margin = marga + (g_prod + g_prec + g_scrap + g_ene + g_maint + g_mat_saving)
+    return ton, total_margin, g_prod, g_prec, g_scrap, (g_ene + g_maint + g_mat_saving)
 
-# Calcolo guadagni
-g_prod_p, g_prec_p, g_scrap_p, g_tech_p = get_gains(pp, op, sp, scrp, csp, mp_pre, cp, c_poly)
-margp = marga + (g_prod_p + g_prec_p + g_scrap_p + g_tech_p)
+# 2. Calcoli Premium
+ton_p, margp, gp_prod, gp_prec, gp_scrap, gp_tech = calc_line_performance(pp, op, sp, scrp, csp, mp_pre, cp, c_poly)
 
+# 3. Calcoli Fusion
 if show_fusion:
-    g_prod_f, g_prec_f, g_scrap_f, g_tech_f = get_gains(pf, of, sf, scrf, csf, mf_fus, cf, c_poly_f)
-    margf = marga + (g_prod_f + g_prec_f + g_scrap_f + g_tech_f)
+    ton_f, margf, gf_prod, gf_prec, gf_scrap, gf_tech = calc_line_performance(pf, of, sf, scrf, csf, mf_fus, cf, c_poly_f)
 
 # --- TABLES ---
 st.subheader(t['tech_comp'])
@@ -201,32 +200,35 @@ if show_fusion:
     fin_data["Fusion"] = [f"{simbolo} {margf*cambio:,.0f}", f"{(margf/cf)*100:.1f}%", f"{(margf*5/cf)*100:.1f}%"]
 st.table(pd.DataFrame(fin_data))
 
+# Metriche Payback
+payback_p = ((cp - ca) / (margp - marga)) * 12 if (margp - marga) > 0 else 0
+st.metric(label=f"⭐ {t['payback_months']} (Premium vs Std)", value=f"{payback_p:.1f} Months")
+
+if show_fusion:
+    payback_f = ((cf - ca) / (margf - marga)) * 12 if (margf - marga) > 0 else 0
+    st.metric(label=f"🌀 {t['payback_months']} (Fusion vs Std)", value=f"{payback_f:.1f} Months")
+
 # --- CHARTS SECTION ---
 st.header(t['res_title'])
 c1, c2 = st.columns(2)
 
-# Grafico a Torta (o due torte se Fusion attiva)
 with c1:
     labels = ['Produttività', 'Precisione', 'Recupero Scarti', 'Efficienza Tecnica/Materiale']
-    pie_cols = ['#00CC96', '#636EFA', '#AB63FA', '#FFA15A']
-    
     if not show_fusion:
-        fig_pie = go.Figure(data=[go.Pie(labels=labels, values=[max(0,g_prod_p), max(0,g_prec_p), max(0,g_scrap_p), max(0,g_tech_p)], hole=.4)])
+        fig_pie = go.Figure(data=[go.Pie(labels=labels, values=[max(0,gp_prod), max(0,gp_prec), max(0,gp_scrap), max(0,gp_tech)], hole=.4)])
         fig_pie.update_layout(title=f"{t['factor_dist']} (Premium vs Std)")
         st.plotly_chart(fig_pie, use_container_width=True)
     else:
-        # Visualizzazione doppia torta per confronto
-        sub_c1, sub_c2 = st.columns(2)
-        with sub_c1:
-            f1 = go.Figure(data=[go.Pie(labels=labels, values=[max(0,g_prod_p), max(0,g_prec_p), max(0,g_scrap_p), max(0,g_tech_p)], hole=.4)])
+        sc1, sc2 = st.columns(2)
+        with sc1:
+            f1 = go.Figure(data=[go.Pie(labels=labels, values=[max(0,gp_prod), max(0,gp_prec), max(0,gp_scrap), max(0,gp_tech)], hole=.4)])
             f1.update_layout(title="Premium vs Std", showlegend=False)
             st.plotly_chart(f1, use_container_width=True)
-        with sub_c2:
-            f2 = go.Figure(data=[go.Pie(labels=labels, values=[max(0,g_prod_f), max(0,g_prec_f), max(0,g_scrap_f), max(0,g_tech_f)], hole=.4)])
+        with sc2:
+            f2 = go.Figure(data=[go.Pie(labels=labels, values=[max(0,gf_prod), max(0,gf_prec), max(0,gf_scrap), max(0,gf_tech)], hole=.4)])
             f2.update_layout(title="Fusion vs Std", showlegend=False)
             st.plotly_chart(f2, use_container_width=True)
 
-# Grafico Crossover
 with c2:
     yrs = [i/4 for i in range(41)]
     fig_cross = go.Figure()
