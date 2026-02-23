@@ -39,7 +39,10 @@ lang_dict = {
         "chart_scrap": "Scrap Recovery",
         "chart_tech": "Tech/Material Saving",
         "chart_years": "Years",
-        "chart_profit": "Net Surplus"
+        "chart_profit": "Net Surplus",
+        "cost_kg": "Production Cost per kg",
+        "extra_5y": "5-Year Extra Profit (vs Std)",
+        "contrib_margin": "Contribution Margin (%)"
     },
     "Italiano": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -68,99 +71,14 @@ lang_dict = {
         "chart_scrap": "Recupero Scarti",
         "chart_tech": "Risparmio Tec/Mat",
         "chart_years": "Anni",
-        "chart_profit": "Surplus Netto"
-    },
-    "Deutsch": {
-        "title": "ROI Extrusion Strategic Advisor",
-        "tech_comp": "📊 Technischer Vergleich",
-        "fin_comp": "💰 Finanzrendite",
-        "res_title": "🏁 ROI-Ergebnisse",
-        "download_pdf": "📩 PDF-Bericht herunterladen",
-        "annual_prod": "Nettoproduktion",
-        "margin_yr": "Operativer Marge",
-        "roi_ann": "ROI",
-        "yield_5y": "5-Jahres-Rendite",
-        "factor_dist": "Einsparungen",
-        "line_a": "Standard",
-        "line_b": "Premium",
-        "line_c": "Fusion",
-        "notes_label": "Notizen",
-        "notes_placeholder": "Notizen qui...",
-        "payback_months": "Amortisation (Monate)",
-        "crossover_title": "Zusatzgewinn",
-        "t_prod": "Jährliche Produktion",
-        "t_oee": "Effizienz (OEE)",
-        "t_scrap": "Materialausschuss",
-        "t_cons": "Spez. Verbrauch",
-        "chart_prod": "Produktivität",
-        "chart_prec": "Präzision",
-        "chart_scrap": "Ausschuss",
-        "chart_tech": "Tech/Mat Ersparnis",
-        "chart_years": "Jahre",
-        "chart_profit": "Nettoüberschuss"
-    },
-    "Español": {
-        "title": "ROI Extrusion Strategic Advisor",
-        "tech_comp": "📊 Comparativa Técnica",
-        "fin_comp": "💰 Rendimiento Financiero",
-        "res_title": "🏁 Resultados ROI",
-        "download_pdf": "📩 Descargar PDF",
-        "annual_prod": "Producción Neta",
-        "margin_yr": "Margen Anual",
-        "roi_ann": "ROI",
-        "yield_5y": "Rendimiento 5 años",
-        "factor_dist": "Distribución",
-        "line_a": "Estándar",
-        "line_b": "Premium",
-        "line_c": "Fusion",
-        "notes_label": "Notas",
-        "notes_placeholder": "Escribir notas...",
-        "payback_months": "Meses retorno",
-        "crossover_title": "Beneficio Extra",
-        "t_prod": "Producción Anual",
-        "t_oee": "Eficiencia (OEE)",
-        "t_scrap": "Desecho de Material",
-        "t_cons": "Consumo Específico",
-        "chart_prod": "Productividad",
-        "chart_prec": "Precisión",
-        "chart_scrap": "Recuperación",
-        "chart_tech": "Ahorro Tec/Mat",
-        "chart_years": "Años",
-        "chart_profit": "Excedente Neto"
-    },
-    "العربية": {
-        "title": "مستشار استراتيجية عائد الاستثمار",
-        "tech_comp": "المقارنة الفنية والتشغيلية",
-        "fin_comp": "أداء الأصول والعائد المالي",
-        "res_title": "نتائج تحليل عائد الاستثمار",
-        "download_pdf": "تحميل التقرير (PDF)",
-        "annual_prod": "الإنتاج السنوي",
-        "margin_yr": "هامش التشغيل",
-        "roi_ann": "عائد الاستثمار",
-        "yield_5y": "إجمالي العائد 5 سنوات",
-        "factor_dist": "توزيع محركات الربح",
-        "line_a": "الخط القياسي",
-        "line_b": "الخط المتميز",
-        "line_c": "خط Fusion",
-        "notes_label": "ملاحظات",
-        "notes_placeholder": "أدخل الملاحظات هنا...",
-        "payback_months": "أشهر الاسترداد",
-        "crossover_title": "إجمالي الربح الإضافي",
-        "t_prod": "الإنتاج السنوي",
-        "t_oee": "كفاءة المعدات",
-        "t_scrap": "خردة المواد",
-        "t_cons": "استهلاك الطاقة",
-        "chart_prod": "إنتاجية",
-        "chart_prec": "دقة",
-        "chart_scrap": "استعادة الخردة",
-        "chart_tech": "توفير المواد",
-        "chart_years": "سنوات",
-        "chart_profit": "الفائض الصافي"
+        "chart_profit": "Surplus Netto",
+        "cost_kg": "Costo di Produzione al kg",
+        "extra_5y": "Extra Profitto 5 Anni (vs Std)",
+        "contrib_margin": "Margine di Contribuzione (%)"
     }
 }
 
 st.set_page_config(page_title="ROI Advisor", layout="wide")
-# Lingua iniziale: English
 lingua = st.sidebar.selectbox("Language Selection", list(lang_dict.keys()))
 t = lang_dict[lingua]
 st.title(t['title'])
@@ -208,35 +126,50 @@ if show_fusion:
         st.subheader(f"🌀 {t['line_c']}")
         cf = st.number_input("CAPEX Fusion", value=2200000)
         pf = st.number_input("Output (kg/h) Fusion", value=440)
-        of = op # OEE uguale a Premium
+        of = op 
         st.info(f"OEE Fusion: {of}%")
         sf = st.number_input("2-Sigma (%) Fusion", value=1.5)
         scrf = st.number_input("Scrap (%) Fusion", value=1.5)
         mf_fus = st.number_input("Maint. % Fusion", value=1.5)
         csf = st.number_input("kWh/kg Fusion", value=0.28)
-        c_poly_f = st.number_input(f"Polymer Cost Fusion ({simbolo}/kg)", value=1.35 * cambio) / cambio
+        c_poly_f = st.sidebar.number_input(f"Polymer Cost Fusion ({simbolo}/kg)", value=1.35 * cambio) / cambio
 
 # --- CALCULATIONS ---
-ton_a = (pa * h_an * (oa/100) * (1 - scra/100)) / 1000
-mat_eff_a = 1 - (tol_m - sa)/100
-marga = (ton_a * 1000 * p_sell) - (pa * h_an * (oa/100) * c_poly * mat_eff_a) - (pa * h_an * (oa/100) * csa * c_ene) - (ca * ma_std/100)
-
-def get_performance_vs_std(p, o, s, scr, cs, m, capex, cost_p):
+def get_metrics(p, o, s, scr, cs, m, capex, cost_p, base_ton=None, base_marg=None):
     ton = (p * h_an * (o/100) * (1 - scr/100)) / 1000
     mat_eff = 1 - (tol_m - s)/100
-    margin = (ton * 1000 * p_sell) - (p * h_an * (o/100) * cost_p * mat_eff) - (p * h_an * (o/100) * cs * c_ene) - (capex * m/100)
-    g_prod = ((ton - ton_a) * 1000 * (p_sell - cost_p))
-    g_prec = (p * h_an * (o/100)) * cost_p * ((sa - s)/100)
-    g_scrap = (p * h_an * (o/100)) * cost_p * ((scra - scr)/100)
-    g_tech_energy = (pa * h_an * (oa/100) * csa * c_ene - p * h_an * (o/100) * cs * c_ene)
-    g_maint = (ca * ma_std/100 - capex * m/100)
-    g_mat_base = (ton * 1000) * (c_poly - cost_p) if cost_p < c_poly else 0
-    return ton, margin, g_prod, g_prec, g_scrap, (g_tech_energy + g_maint + g_mat_base)
+    
+    # Costi Operativi (OPEX)
+    c_mat_tot = (p * h_an * (o/100) * cost_p * mat_eff)
+    c_ene_tot = (p * h_an * (o/100) * cs * c_ene)
+    c_maint_tot = (capex * m/100)
+    opex_annuo = c_mat_tot + c_ene_tot + c_maint_tot
+    
+    margin = (ton * 1000 * p_sell) - opex_annuo
+    costo_kg = opex_annuo / (ton * 1000)
+    margine_contrib = ((p_sell - costo_kg) / p_sell) * 100
 
-ton_p, margp, gp_prod, gp_prec, gp_scrap, gp_tech = get_performance_vs_std(pp, op, sp, scrp, csp, mp_pre, cp, c_poly)
+    # Delta Drivers (solo se non è la base)
+    g_prod, g_prec, g_scrap, g_tech = 0, 0, 0, 0
+    if base_ton is not None:
+        g_prod = ((ton - base_ton) * 1000 * (p_sell - cost_p))
+        g_prec = (p * h_an * (o/100)) * cost_p * ((sa - s)/100)
+        g_scrap = (p * h_an * (o/100)) * cost_p * ((scra - scr)/100)
+        g_tech = (opex_annuo_std - opex_annuo) + g_prod + g_prec + g_scrap # Normalizzato
+        # Semplificazione per torta:
+        g_tech = (opex_annuo_std * (ton/base_ton) - opex_annuo) 
 
+    return ton, margin, costo_kg, margine_contrib, opex_annuo, g_prod, g_prec, g_scrap, g_tech
+
+# 1. Standard
+ton_a, marga, ckg_a, mc_a, opex_annuo_std, _, _, _, _ = get_metrics(pa, oa, sa, scra, csa, ma_std, ca, c_poly)
+
+# 2. Premium
+ton_p, margp, ckg_p, mc_p, opex_p, gp_prod, gp_prec, gp_scrap, gp_tech = get_metrics(pp, op, sp, scrp, csp, mp_pre, cp, c_poly, ton_a, marga)
+
+# 3. Fusion
 if show_fusion:
-    ton_f, margf, gf_prod, gf_prec, gf_scrap, gf_tech = get_performance_vs_std(pf, of, sf, scrf, csf, mf_fus, cf, c_poly_f)
+    ton_f, margf, ckg_f, mc_f, opex_f, gf_prod, gf_prec, gf_scrap, gf_tech = get_metrics(pf, of, sf, scrf, csf, mf_fus, cf, c_poly_f, ton_a, marga)
 
 # --- TABLES ---
 st.subheader(t['tech_comp'])
@@ -245,18 +178,17 @@ tech_data = {
     "Standard": [f"{ton_a:,.0f} T", f"{oa}%", f"{scra}%", f"{csa} kWh/kg"],
     "Premium": [f"{ton_p:,.0f} T", f"{op}%", f"{scrp}%", f"{csp} kWh/kg"]
 }
-if show_fusion:
-    tech_data["Fusion"] = [f"{ton_f:,.0f} T", f"{of}%", f"{scrf}%", f"{csf} kWh/kg"]
+if show_fusion: tech_data["Fusion"] = [f"{ton_f:,.0f} T", f"{of}%", f"{scrf}%", f"{csf} kWh/kg"]
 st.table(pd.DataFrame(tech_data))
 
 st.subheader(t['fin_comp'])
 fin_data = {
-    "Indicator": [t['margin_yr'], t['roi_ann'], t['yield_5y']],
-    "Standard": [f"{simbolo} {marga*cambio:,.0f}", f"{(marga/ca)*100:.1f}%", f"{(marga*5/ca)*100:.1f}%"],
-    "Premium": [f"{simbolo} {margp*cambio:,.0f}", f"{(margp/cp)*100:.1f}%", f"{(margp*5/cp)*100:.1f}%"]
+    "Indicator": [t['cost_kg'], t['margin_yr'], t['roi_ann'], t['yield_5y'], t['extra_5y']],
+    "Standard": [f"{simbolo} {ckg_a*cambio:.3f}", f"{simbolo} {marga*cambio:,.0f}", f"{(marga/ca)*100:.1f}%", f"{(marga*5/ca)*100:.1f}%", "-"],
+    "Premium": [f"{simbolo} {ckg_p*cambio:.3f}", f"{simbolo} {margp*cambio:,.0f}", f"{(margp/cp)*100:.1f}%", f"{(margp*5/cp)*100:.1f}%", f"{simbolo} {(margp-marga)*5*cambio:,.0f}"]
 }
 if show_fusion:
-    fin_data["Fusion"] = [f"{simbolo} {margf*cambio:,.0f}", f"{(margf/cf)*100:.1f}%", f"{(margf*5/cf)*100:.1f}%"]
+    fin_data["Fusion"] = [f"{simbolo} {ckg_f*cambio:.3f}", f"{simbolo} {margf*cambio:,.0f}", f"{(margf/cf)*100:.1f}%", f"{(margf*5/cf)*100:.1f}%", f"{simbolo} {(margf-marga)*5*cambio:,.0f}"]
 st.table(pd.DataFrame(fin_data))
 
 # --- CHARTS ---
@@ -266,29 +198,25 @@ with c1:
     labels = [t['chart_prod'], t['chart_prec'], t['chart_scrap'], t['chart_tech']]
     if not show_fusion:
         fig = go.Figure(data=[go.Pie(labels=labels, values=[max(0.1, gp_prod), max(0.1, gp_prec), max(0.1, gp_scrap), max(0.1, gp_tech)], hole=.4)])
-        fig.update_layout(title=f"{t['factor_dist']} ({t['line_b']} vs {t['line_a']})")
         st.plotly_chart(fig, use_container_width=True)
     else:
         sc1, sc2 = st.columns(2)
         with sc1:
             f1 = go.Figure(data=[go.Pie(labels=labels, values=[max(0.1, gp_prod), max(0.1, gp_prec), max(0.1, gp_scrap), max(0.1, gp_tech)], hole=.4)])
-            f1.update_layout(title=f"{t['line_b']} vs {t['line_a']}", showlegend=False); st.plotly_chart(f1, use_container_width=True)
+            f1.update_layout(title="Premium vs Std", showlegend=False); st.plotly_chart(f1, use_container_width=True)
         with sc2:
             f2 = go.Figure(data=[go.Pie(labels=labels, values=[max(0.1, gf_prod), max(0.1, gf_prec), max(0.1, gf_scrap), max(0.1, gf_tech)], hole=.4)])
-            f2.update_layout(title=f"{t['line_c']} vs {t['line_a']}", showlegend=False); st.plotly_chart(f2, use_container_width=True)
+            f2.update_layout(title="Fusion vs Std", showlegend=False); st.plotly_chart(f2, use_container_width=True)
 
 with c2:
     yrs = [i/4 for i in range(41)]
     fig_cross = go.Figure()
-    fig_cross.add_trace(go.Scatter(x=yrs, y=[(-(cp-ca)+(margp-marga)*y)*cambio for y in yrs], name=f"{t['line_b']} vs {t['line_a']}", line=dict(color='#00CC96')))
+    fig_cross.add_trace(go.Scatter(x=yrs, y=[(-(cp-ca)+(margp-marga)*y)*cambio for y in yrs], name=f"{t['line_b']} vs {t['line_a']}"))
     if show_fusion:
-        fig_cross.add_trace(go.Scatter(x=yrs, y=[(-(cf-ca)+(margf-marga)*y)*cambio for y in yrs], name=f"{t['line_c']} vs {t['line_a']}", line=dict(color='#AB63FA')))
+        fig_cross.add_trace(go.Scatter(x=yrs, y=[(-(cf-ca)+(margf-marga)*y)*cambio for y in yrs], name=f"{t['line_c']} vs {t['line_a']}"))
     fig_cross.add_hline(y=0, line_dash="dash", line_color="red")
     fig_cross.update_layout(title=t['crossover_title'], xaxis_title=t['chart_years'], yaxis_title=t['chart_profit'])
     st.plotly_chart(fig_cross, use_container_width=True)
 
 st.divider()
 notes = st.text_area(t['notes_label'], placeholder=t['notes_placeholder'], height=100)
-
-if st.button(t['download_pdf']):
-    st.info("Generating report...")
