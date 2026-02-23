@@ -16,7 +16,7 @@ lang_dict = {
         "line_c": "Fusion Line",
         "notes_label": "Meeting Notes",
         "notes_placeholder": "Enter notes...",
-        "payback_months": "Months to Payback Extra CAPEX",
+        "payback_label": "Payback Period (Years)",
         "crossover_title": "Cumulative Extra Profit (vs Std)",
         "t_prod": "Annual Production",
         "t_oee": "Efficiency (OEE)",
@@ -46,7 +46,7 @@ lang_dict = {
         "line_c": "Linea Fusion",
         "notes_label": "Note del Meeting / Osservazioni Strategiche",
         "notes_placeholder": "Inserisci accordi, sconti o osservazioni...",
-        "payback_months": "Mesi per rientro Extra CAPEX",
+        "payback_label": "Periodo di Payback (Anni)",
         "crossover_title": "Extra Profitto Cumulativo (vs Std)",
         "t_prod": "Produzione Annua",
         "t_oee": "Efficienza (OEE)",
@@ -76,7 +76,7 @@ lang_dict = {
         "line_c": "Fusion",
         "notes_label": "Notizen",
         "notes_placeholder": "Notizen qui...",
-        "payback_months": "Amortisation (Monate)",
+        "payback_label": "Amortisationszeit (Jahre)",
         "crossover_title": "Zusatzgewinn",
         "t_prod": "Jährliche Produktion",
         "t_oee": "Effizienz (OEE)",
@@ -106,7 +106,7 @@ lang_dict = {
         "line_c": "Fusion",
         "notes_label": "Notas",
         "notes_placeholder": "Escribir notas...",
-        "payback_months": "Meses retorno",
+        "payback_label": "Periodo de Retorno (Años)",
         "crossover_title": "Beneficio Extra",
         "t_prod": "Producción Anual",
         "t_oee": "Eficiencia (OEE)",
@@ -128,7 +128,7 @@ lang_dict = {
 }
 
 st.set_page_config(page_title="ROI Advisor", layout="wide")
-lingua = st.sidebar.selectbox("Language Selection", list(lang_dict.keys()), index=0) # English predefinito
+lingua = st.sidebar.selectbox("Language Selection", list(lang_dict.keys()), index=0)
 t = lang_dict[lingua]
 st.title(t['title'])
 
@@ -187,35 +187,27 @@ if show_fusion:
 def get_metrics(p, o, s, scr, cs, m, capex, cost_p, is_base=False):
     ton = (p * h_an * (o/100) * (1 - scr/100)) / 1000
     mat_eff = 1 - (tol_m - s)/100
-    
-    # Costi Operativi
-    c_mat_tot = (p * h_an * (o/100) * cost_p * mat_eff)
-    c_ene_tot = (p * h_an * (o/100) * cs * c_ene)
-    c_maint_tot = (capex * m/100)
-    opex_annuo = c_mat_tot + c_ene_tot + c_maint_tot
-    
+    opex_annuo = (p * h_an * (o/100) * cost_p * mat_eff) + (p * h_an * (o/100) * cs * c_ene) + (capex * m/100)
     margin = (ton * 1000 * p_sell) - opex_annuo
     costo_kg = opex_annuo / (ton * 1000)
+    payback = capex / margin if margin > 0 else 99
     
-    # Delta Drivers rispetto a Standard
     g_prod, g_prec, g_scrap, g_tech = 0, 0, 0, 0
     if not is_base:
         g_prod = ((ton - ton_a) * 1000 * (p_sell - cost_p))
         g_prec = (p * h_an * (o/100)) * cost_p * ((sa - s)/100)
         g_scrap = (p * h_an * (o/100)) * cost_p * ((scra - scr)/100)
-        # Semplificazione per visualizzazione grafica dei risparmi tecnici
         g_tech = (opex_annuo_std * (ton/ton_a) - opex_annuo) 
 
-    return ton, margin, costo_kg, g_prod, g_prec, g_scrap, g_tech
+    return ton, margin, costo_kg, payback, g_prod, g_prec, g_scrap, g_tech
 
 # Esecuzione
-ton_a, marga, ckg_a, _, _, _, _ = get_metrics(pa, oa, sa, scra, csa, ma_std, ca, c_poly, True)
-# Salviamo opex standard per calcoli delta
+ton_a, marga, ckg_a, pb_a, _, _, _, _ = get_metrics(pa, oa, sa, scra, csa, ma_std, ca, c_poly, True)
 opex_annuo_std = (pa * h_an * (oa/100) * c_poly * (1 - (tol_m - sa)/100)) + (pa * h_an * (oa/100) * csa * c_ene) + (ca * ma_std/100)
 
-ton_p, margp, ckg_p, gp_prod, gp_prec, gp_scrap, gp_tech = get_metrics(pp, op, sp, scrp, csp, mp_pre, cp, c_poly)
+ton_p, margp, ckg_p, pb_p, gp_prod, gp_prec, gp_scrap, gp_tech = get_metrics(pp, op, sp, scrp, csp, mp_pre, cp, c_poly)
 if show_fusion:
-    ton_f, margf, ckg_f, gf_prod, gf_prec, gf_scrap, gf_tech = get_metrics(pf, of, sf, scrf, csf, mf_fus, cf, c_poly_f)
+    ton_f, margf, ckg_f, pb_f, gf_prod, gf_prec, gf_scrap, gf_tech = get_metrics(pf, of, sf, scrf, csf, mf_fus, cf, c_poly_f)
 
 # --- TABLES ---
 st.subheader(t['tech_comp'])
@@ -229,31 +221,28 @@ st.table(pd.DataFrame(tech_data))
 
 st.subheader(t['fin_comp'])
 fin_data = {
-    "Indicator": [t['cost_kg'], t['margin_yr'], t['roi_ann'], t['yield_5y'], t['extra_5y']],
-    "Standard": [f"{simbolo} {ckg_a*cambio:.3f}", f"{simbolo} {marga*cambio:,.0f}", f"{(marga/ca)*100:.1f}%", f"{(marga*5/ca)*100:.1f}%", "-"],
-    "Premium": [f"{simbolo} {ckg_p*cambio:.3f}", f"{simbolo} {margp*cambio:,.0f}", f"{(margp/cp)*100:.1f}%", f"{(margp*5/cp)*100:.1f}%", f"{simbolo} {(margp-marga)*5*cambio:,.0f}"]
+    "Indicator": [t['cost_kg'], t['margin_yr'], t['roi_ann'], t['payback_label'], t['extra_5y']],
+    "Standard": [f"{simbolo} {ckg_a*cambio:.3f}", f"{simbolo} {marga*cambio:,.0f}", f"{(marga/ca)*100:.1f}%", f"{pb_a:.2f}", "-"],
+    "Premium": [f"{simbolo} {ckg_p*cambio:.3f}", f"{simbolo} {margp*cambio:,.0f}", f"{(margp/cp)*100:.1f}%", f"{pb_p:.2f}", f"{simbolo} {(margp-marga)*5*cambio:,.0f}"]
 }
 if show_fusion:
-    fin_data["Fusion"] = [f"{simbolo} {ckg_f*cambio:.3f}", f"{simbolo} {margf*cambio:,.0f}", f"{(margf/cf)*100:.1f}%", f"{(margf*5/cf)*100:.1f}%", f"{simbolo} {(margf-marga)*5*cambio:,.0f}"]
+    fin_data["Fusion"] = [f"{simbolo} {ckg_f*cambio:.3f}", f"{simbolo} {margf*cambio:,.0f}", f"{(margf/cf)*100:.1f}%", f"{pb_f:.2f}", f"{simbolo} {(margf-marga)*5*cambio:,.0f}"]
 st.table(pd.DataFrame(fin_data))
 
 # --- CHARTS ---
 st.header(t['res_title'])
 c1, c2 = st.columns(2)
 with c1:
-    labels = [t['chart_prod'], t['chart_prec'], t['chart_scrap'], t['chart_tech']]
-    if not show_fusion:
-        fig = go.Figure(data=[go.Pie(labels=labels, values=[max(0.1, gp_prod), max(0.1, gp_prec), max(0.1, gp_scrap), max(0.1, gp_tech)], hole=.4)])
-        fig.update_layout(title=t['factor_dist'])
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        sc1, sc2 = st.columns(2)
-        with sc1:
-            f1 = go.Figure(data=[go.Pie(labels=labels, values=[max(0.1, gp_prod), max(0.1, gp_prec), max(0.1, gp_scrap), max(0.1, gp_tech)], hole=.4)])
-            f1.update_layout(title=t['line_b'], showlegend=False); st.plotly_chart(f1, use_container_width=True)
-        with sc2:
-            f2 = go.Figure(data=[go.Pie(labels=labels, values=[max(0.1, gf_prod), max(0.1, gf_prec), max(0.1, gf_scrap), max(0.1, gf_tech)], hole=.4)])
-            f2.update_layout(title=t['line_c'], showlegend=False); st.plotly_chart(f2, use_container_width=True)
+    # Grafico Payback Comparison
+    pb_names = [t['line_a'], t['line_b']]
+    pb_values = [pb_a, pb_p]
+    if show_fusion:
+        pb_names.append(t['line_c'])
+        pb_values.append(pb_f)
+    
+    fig_pb = go.Figure(go.Bar(y=pb_names, x=pb_values, orientation='h', marker_color=['#636EFA', '#00CC96', '#AB63FA']))
+    fig_pb.update_layout(title=t['payback_label'], xaxis_title=t['chart_years'], yaxis={'autorange': "reversed"})
+    st.plotly_chart(fig_pb, use_container_width=True)
 
 with c2:
     yrs = [i/4 for i in range(41)]
@@ -264,6 +253,8 @@ with c2:
     fig_cross.add_hline(y=0, line_dash="dash", line_color="red")
     fig_cross.update_layout(title=t['crossover_title'], xaxis_title=t['chart_years'], yaxis_title=t['chart_profit'])
     st.plotly_chart(fig_cross, use_container_width=True)
+
+
 
 st.divider()
 notes = st.text_area(t['notes_label'], placeholder=t['notes_placeholder'], height=100)
