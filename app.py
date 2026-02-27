@@ -2,7 +2,7 @@ import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
 
-# --- DIZIONARIO TRADUZIONI ---
+# --- 1. DIZIONARIO TRADUZIONI ---
 lang_dict = {
     "English": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -22,11 +22,11 @@ lang_dict = {
         "t_cons": "Spec. Consumption",
         "chart_years": "Years",
         "chart_profit": "Net Surplus",
-        "cost_kg": "Unit Cost (per kg)",
-        "margin_yr": "Annual Op. Margin",
+        "cost_kg": "Total Unit Cost (per kg)",
+        "margin_yr": "Annual Net Margin (EBT)",
         "roi_ann": "Annualized ROI",
         "extra_5y": "5-Year Extra Profit (vs Std)",
-        "market_settings": "Market Settings"
+        "market_settings": "Market & OpEx Settings"
     },
     "Italiano": {
         "title": "ROI Extrusion Strategic Advisor",
@@ -46,14 +46,14 @@ lang_dict = {
         "t_cons": "Consumo Specifico",
         "chart_years": "Anni",
         "chart_profit": "Surplus Netto",
-        "cost_kg": "Costo Unitario (al kg)",
-        "margin_yr": "Margine Operativo Annuo",
+        "cost_kg": "Costo Unitario Totale (al kg)",
+        "margin_yr": "Margine Netto Annuo (EBT)",
         "roi_ann": "ROI Annualizzato",
         "extra_5y": "Extra Profitto 5 Anni (vs Std)",
-        "market_settings": "Impostazioni Mercato"
+        "market_settings": "Impostazioni Mercato e OpEx"
     },
-    "Deutsch": { "title": "ROI Extrusion Strategic Advisor", "tech_comp": "📊 Technischer Vergleich", "fin_comp": "💰 Finanzielle Performance", "res_title": "🏁 ROI-Ergebnisse", "line_a": "Standard", "line_b": "Premium", "line_c": "Fusion", "notes_label": "Notizen", "notes_placeholder": "Notizen...", "payback_label": "Amortisationszeit (Jahre)", "crossover_title": "Zusatzgewinn", "t_prod": "Produktion/Jahr", "t_oee": "Effizienz (OEE)", "t_scrap": "Ausschuss", "t_cons": "Energieverbrauch", "chart_years": "Jahre", "chart_profit": "Nettoüberschuss", "cost_kg": "Stückkosten", "margin_yr": "Marge", "roi_ann": "ROI", "extra_5y": "5-J-Zusatzprofit", "market_settings": "Einstellungen" },
-    "Español": { "title": "ROI Extrusion Strategic Advisor", "tech_comp": "📊 Comparativa Técnica", "fin_comp": "💰 Rendimiento Financiero", "res_title": "🏁 Resultados ROI", "line_a": "Estándar", "line_b": "Premium", "line_c": "Fusion", "notes_label": "Notas", "notes_placeholder": "Notas...", "payback_label": "Payback (Años)", "crossover_title": "Beneficio Extra", "t_prod": "Producción Anual", "t_oee": "Eficiencia", "t_scrap": "Desperdicio", "t_cons": "Consumo", "chart_years": "Años", "chart_profit": "Excedente", "cost_kg": "Costo/kg", "margin_yr": "Margen Anual", "roi_ann": "ROI", "extra_5y": "Extra 5 años", "market_settings": "Ajustes" }
+    "Deutsch": { "title": "ROI Extrusion Strategic Advisor", "tech_comp": "📊 Technischer Vergleich", "fin_comp": "💰 Finanzielle Performance", "res_title": "🏁 ROI-Ergebnisse", "line_a": "Standard", "line_b": "Premium", "line_c": "Fusion", "notes_label": "Notizen", "notes_placeholder": "Notizen...", "payback_label": "Amortisationszeit (Jahre)", "crossover_title": "Zusatzgewinn", "t_prod": "Produktion/Jahr", "t_oee": "Effizienz (OEE)", "t_scrap": "Ausschuss", "t_cons": "Energieverbrauch", "chart_years": "Jahre", "chart_profit": "Nettoüberschuss", "cost_kg": "Gesamtstückkosten", "margin_yr": "Netto-Marge (EBT)", "roi_ann": "ROI", "extra_5y": "5-J-Zusatzprofit", "market_settings": "Einstellungen" },
+    "Español": { "title": "ROI Extrusion Strategic Advisor", "tech_comp": "📊 Comparativa Técnica", "fin_comp": "💰 Rendimiento Financiero", "res_title": "🏁 Resultados ROI", "line_a": "Estándar", "line_b": "Premium", "line_c": "Fusion", "notes_label": "Notas", "notes_placeholder": "Notas...", "payback_label": "Payback (Años)", "crossover_title": "Beneficio Extra", "t_prod": "Producción Anual", "t_oee": "Eficiencia", "t_scrap": "Desperdicio", "t_cons": "Consumo", "chart_years": "Años", "chart_profit": "Excedente", "cost_kg": "Costo Unitario Total", "margin_yr": "Margen Neto (EBT)", "roi_ann": "ROI", "extra_5y": "Extra 5 años", "market_settings": "Ajustes" }
 }
 
 st.set_page_config(page_title="ROI Advisor", layout="wide")
@@ -61,11 +61,11 @@ lingua = st.sidebar.selectbox("Language", list(lang_dict.keys()), index=0)
 t = lang_dict[lingua]
 
 # --- COLORS ---
-color_a = "#636EFA" # Blue
-color_b = "#00CC96" # Green
-color_c = "#AB63FA" # Purple
+color_a = "#636EFA" 
+color_b = "#00CC96" 
+color_c = "#AB63FA" 
 
-# --- SIDEBAR: MARKET SETTINGS ---
+# --- 2. SIDEBAR: MARKET & FIXED COSTS ---
 st.sidebar.header(f"🌍 {t['market_settings']}")
 valuta_sel = st.sidebar.radio("Currency", ["EUR", "USD"])
 simbolo = "€" if valuta_sel == "EUR" else "$"
@@ -76,9 +76,18 @@ p_sell = st.sidebar.number_input(f"Selling Price ({simbolo}/kg)", value=2.00)
 c_ene = st.sidebar.number_input(f"Energy Cost ({simbolo}/kWh)", value=0.22)
 h_an = st.sidebar.number_input("Hours/Year", value=7500)
 tol_m = st.sidebar.slider("Market Tol. (±%)", 1.0, 10.0, 6.0)
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("🏢 Fixed & Financial Costs")
+space_m2 = st.sidebar.number_input("Space Requirement (m²)", value=108)
+cost_m2 = st.sidebar.number_input(f"Cost per m² ({simbolo})", value=2000)
+operator_cost = st.sidebar.number_input(f"Cost per operator/yr ({simbolo})", value=50000)
+depreciation_yrs = st.sidebar.number_input("Depreciation Period (Years)", value=5)
+interest_rate = st.sidebar.number_input("Interest Rate (%)", value=3.0) / 100
+
 show_fusion = st.sidebar.checkbox("Show Fusion Line", value=False)
 
-# --- INPUT COMPARISON (RIPRISTINATI PARAMETRI ORIGINALI) ---
+# --- 3. INPUT COMPARISON ---
 cols = st.columns(3 if show_fusion else 2)
 with cols[0]:
     st.subheader(f"⚪ {t['line_a']}")
@@ -105,7 +114,7 @@ if show_fusion:
         st.subheader(f"🌀 {t['line_c']}")
         cf = st.number_input("CAPEX Fusion", value=2200000)
         pf = st.number_input("Output (kg/h) Fusion", value=440)
-        of = 87.0 # Pareggiato a Premium come da logica precedente
+        of = 87.0 
         sf = st.number_input("2-Sigma (%) Fusion", value=1.5)
         scrf = st.number_input("Scrap (%) Fusion", value=1.5)
         mf_fus = st.number_input("Maint. % Fusion", value=1.5)
@@ -114,14 +123,29 @@ if show_fusion:
 else:
     c_poly_f = c_poly
 
-# --- CALCULATIONS ---
+# --- 4. CALCULATIONS ---
 def get_metrics(p, o, s, scr, cs, m, cap, cost_p):
     ton = (p * h_an * (o/100) * (1 - scr/100)) / 1000
     mat_eff = 1 - (tol_m - s)/100
-    opex = (p * h_an * (o/100) * cost_p * mat_eff) + (p * h_an * (o/100) * cs * c_ene) + (cap * m/100)
-    marg = (ton * 1000 * p_sell) - opex
-    ckg = opex / (ton * 1000) if ton > 0 else 0
-    pb = cap / marg if marg > 0 else 0
+    
+    # OPEX VARIABILE (Energia + Materia Prima + Manutenzione)
+    opex_var = (p * h_an * (o/100) * cost_p * mat_eff) + (p * h_an * (o/100) * cs * c_ene) + (cap * m/100)
+    
+    # OPEX FISSO (Spazio + Operatore)
+    opex_fix = (space_m2 * cost_m2) + operator_cost
+    
+    # COSTI FINANZIARI (Ammortamento + Interessi)
+    depreciation = cap / depreciation_yrs
+    interest = cap * interest_rate
+    
+    # MARGINE NETTO (EBT)
+    revenue = ton * 1000 * p_sell
+    total_opex = opex_var + opex_fix + depreciation + interest
+    marg = revenue - total_opex
+    
+    ckg = total_opex / (ton * 1000) if ton > 0 else 0
+    pb = cap / (marg + depreciation) if (marg + depreciation) > 0 else 0 # Payback basato su Cash Flow (Margine + Ammortamento)
+    
     return ton, marg, ckg, pb
 
 ton_a, marg_a, ckg_a, pb_a = get_metrics(pa, oa, sa, scra, csa, ma_std, ca, c_poly)
@@ -129,7 +153,7 @@ ton_b, marg_b, ckg_b, pb_b = get_metrics(pp, op, sp, scrp, csp, mp_pre, cp, c_po
 if show_fusion:
     ton_c, marg_c, ckg_c, pb_c = get_metrics(pf, of, sf, scrf, csf, mf_fus, cf, c_poly_f)
 
-# --- TABLES ---
+# --- 5. TABLES ---
 st.subheader(t['tech_comp'])
 tech_data = {
     "Metric": [t['t_prod'], t['t_oee'], t['t_scrap'], t['t_cons']],
@@ -149,18 +173,13 @@ if show_fusion:
     fin_data["Fusion"] = [f"{ckg_c:.3f}", f"{marg_c:,.0f}", f"{(marg_c/cf)*100:.1f}%", f"{pb_c:.2f}", f"{(marg_c-marg_a)*5:,.0f}"]
 st.table(pd.DataFrame(fin_data))
 
-# --- CHARTS CON COLORI MIGLIORATI ---
+# --- 6. CHARTS ---
 st.header(t['res_title'])
 c1, c2 = st.columns(2)
 with c1:
-    names = [t['line_a'], t['line_b']]
-    vals = [pb_a, pb_b]
-    colors = [color_a, color_b]
+    names = [t['line_a'], t['line_b']]; vals = [pb_a, pb_b]; colors = [color_a, color_b]
     if show_fusion:
-        names.append(t['line_c'])
-        vals.append(pb_c)
-        colors.append(color_c)
-    
+        names.append(t['line_c']); vals.append(pb_c); colors.append(color_c)
     fig_pb = go.Figure(go.Bar(y=names, x=vals, orientation='h', marker_color=colors))
     fig_pb.update_layout(title=t['payback_label'], xaxis_title=t['chart_years'], yaxis={'autorange': "reversed"})
     st.plotly_chart(fig_pb, use_container_width=True)
