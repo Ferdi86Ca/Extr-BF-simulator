@@ -26,6 +26,7 @@ lang_dict = {
         "margin_yr": "Annual Net Margin (EBT)",
         "roi_ann": "Annualized ROI",
         "extra_5y": "5-Year Extra Profit (vs Std)",
+        "poly_save": "Polymer Saving (vs Std)",
         "market_settings": "Market & OpEx Settings"
     },
     "Italiano": {
@@ -50,10 +51,11 @@ lang_dict = {
         "margin_yr": "Margine Netto Annuo (EBT)",
         "roi_ann": "ROI Annualizzato",
         "extra_5y": "Extra Profitto 5 Anni (vs Std)",
+        "poly_save": "Risparmio Polimero (vs Std)",
         "market_settings": "Impostazioni Mercato e OpEx"
     },
-    "Deutsch": { "title": "ROI Extrusion Strategic Advisor", "tech_comp": "📊 Technischer Vergleich", "fin_comp": "💰 Finanzielle Performance", "res_title": "🏁 ROI-Ergebnisse", "line_a": "Standard", "line_b": "Premium", "line_c": "Fusion", "notes_label": "Notizen", "notes_placeholder": "Notizen...", "payback_label": "Amortisationszeit (Jahre)", "crossover_title": "Zusatzgewinn", "t_prod": "Produktion/Jahr", "t_oee": "Effizienz (OEE)", "t_scrap": "Ausschuss", "t_cons": "Energieverbrauch", "chart_years": "Jahre", "chart_profit": "Nettoüberschuss", "cost_kg": "Gesamtstückkosten", "margin_yr": "Netto-Marge (EBT)", "roi_ann": "ROI", "extra_5y": "5-J-Zusatzprofit", "market_settings": "Einstellungen" },
-    "Español": { "title": "ROI Extrusion Strategic Advisor", "tech_comp": "📊 Comparativa Técnica", "fin_comp": "💰 Rendimiento Financiero", "res_title": "🏁 Resultados ROI", "line_a": "Estándar", "line_b": "Premium", "line_c": "Fusion", "notes_label": "Notas", "notes_placeholder": "Notas...", "payback_label": "Payback (Años)", "crossover_title": "Beneficio Extra", "t_prod": "Producción Anual", "t_oee": "Eficiencia", "t_scrap": "Desperdicio", "t_cons": "Consumo", "chart_years": "Años", "chart_profit": "Excedente", "cost_kg": "Costo Unitario Total", "margin_yr": "Margen Neto (EBT)", "roi_ann": "ROI", "extra_5y": "Extra 5 años", "market_settings": "Ajustes" }
+    "Deutsch": { "title": "ROI Extrusion Strategic Advisor", "tech_comp": "📊 Technischer Vergleich", "fin_comp": "💰 Finanzielle Performance", "res_title": "🏁 ROI-Ergebnisse", "line_a": "Standard", "line_b": "Premium", "line_c": "Fusion", "notes_label": "Notizen", "notes_placeholder": "Notizen...", "payback_label": "Amortisationszeit (Jahre)", "crossover_title": "Zusatzgewinn", "t_prod": "Produktion/Jahr", "t_oee": "Effizienz (OEE)", "t_scrap": "Ausschuss", "t_cons": "Energieverbrauch", "chart_years": "Jahre", "chart_profit": "Nettoüberschuss", "cost_kg": "Gesamtstückkosten", "margin_yr": "Netto-Marge (EBT)", "roi_ann": "ROI", "extra_5y": "5-J-Zusatzprofit", "poly_save": "Polymer-Ersparnis (vs Std)", "market_settings": "Einstellungen" },
+    "Español": { "title": "ROI Extrusion Strategic Advisor", "tech_comp": "📊 Comparativa Técnica", "fin_comp": "💰 Rendimiento Financiero", "res_title": "🏁 Resultados ROI", "line_a": "Estándar", "line_b": "Premium", "line_c": "Fusion", "notes_label": "Notas", "notes_placeholder": "Notas...", "payback_label": "Payback (Años)", "crossover_title": "Beneficio Extra", "t_prod": "Producción Anual", "t_oee": "Eficiencia", "t_scrap": "Desperdicio", "t_cons": "Consumo", "chart_years": "Años", "chart_profit": "Excedente", "cost_kg": "Costo Unitario Total", "margin_yr": "Margen Neto (EBT)", "roi_ann": "ROI", "extra_5y": "Extra 5 años", "poly_save": "Ahorro de Polímero (vs Std)", "market_settings": "Ajustes" }
 }
 
 st.set_page_config(page_title="ROI Advisor", layout="wide")
@@ -128,30 +130,27 @@ def get_metrics(p, o, s, scr, cs, m, cap, cost_p):
     ton = (p * h_an * (o/100) * (1 - scr/100)) / 1000
     mat_eff = 1 - (tol_m - s)/100
     
-    # OPEX VARIABILE (Energia + Materia Prima + Manutenzione)
-    opex_var = (p * h_an * (o/100) * cost_p * mat_eff) + (p * h_an * (o/100) * cs * c_ene) + (cap * m/100)
+    # Costo materia prima per calcolare il risparmio specifico
+    raw_material_cost = (p * h_an * (o/100) * cost_p * mat_eff)
     
-    # OPEX FISSO (Spazio + Operatore)
+    opex_var = raw_material_cost + (p * h_an * (o/100) * cs * c_ene) + (cap * m/100)
     opex_fix = (space_m2 * cost_m2) + operator_cost
-    
-    # COSTI FINANZIARI (Ammortamento + Interessi)
     depreciation = cap / depreciation_yrs
     interest = cap * interest_rate
     
-    # MARGINE NETTO (EBT)
     revenue = ton * 1000 * p_sell
     total_opex = opex_var + opex_fix + depreciation + interest
     marg = revenue - total_opex
     
     ckg = total_opex / (ton * 1000) if ton > 0 else 0
-    pb = cap / (marg + depreciation) if (marg + depreciation) > 0 else 0 # Payback basato su Cash Flow (Margine + Ammortamento)
+    pb = cap / (marg + depreciation) if (marg + depreciation) > 0 else 0
     
-    return ton, marg, ckg, pb
+    return ton, marg, ckg, pb, raw_material_cost
 
-ton_a, marg_a, ckg_a, pb_a = get_metrics(pa, oa, sa, scra, csa, ma_std, ca, c_poly)
-ton_b, marg_b, ckg_b, pb_b = get_metrics(pp, op, sp, scrp, csp, mp_pre, cp, c_poly)
+ton_a, marg_a, ckg_a, pb_a, raw_a = get_metrics(pa, oa, sa, scra, csa, ma_std, ca, c_poly)
+ton_b, marg_b, ckg_b, pb_b, raw_b = get_metrics(pp, op, sp, scrp, csp, mp_pre, cp, c_poly)
 if show_fusion:
-    ton_c, marg_c, ckg_c, pb_c = get_metrics(pf, of, sf, scrf, csf, mf_fus, cf, c_poly_f)
+    ton_c, marg_c, ckg_c, pb_c, raw_c = get_metrics(pf, of, sf, scrf, csf, mf_fus, cf, c_poly_f)
 
 # --- 5. TABLES ---
 st.subheader(t['tech_comp'])
@@ -164,13 +163,17 @@ if show_fusion: tech_data["Fusion"] = [f"{ton_c:,.0f} T", f"{of}%", f"{scrf}%", 
 st.table(pd.DataFrame(tech_data))
 
 st.subheader(t['fin_comp'])
+# Calcolo Risparmio Polimero rispetto a Standard (normalizzato sulla produzione oraria se necessario, 
+# ma qui lo calcoliamo come differenza di costo totale annuo dovuto a prezzo e precisione)
+poly_save_b = raw_a - raw_b if raw_a > raw_b else 0 # In genere Premium risparmia per sigma
 fin_data = {
-    "Indicator": [t['cost_kg'], t['margin_yr'], t['roi_ann'], t['payback_label'], t['extra_5y']],
-    "Standard": [f"{ckg_a:.3f}", f"{marg_a:,.0f}", f"{(marg_a/ca)*100:.1f}%", f"{pb_a:.2f}", "-"],
-    "Premium": [f"{ckg_b:.3f}", f"{marg_b:,.0f}", f"{(marg_b/cp)*100:.1f}%", f"{pb_b:.2f}", f"{(marg_b-marg_a)*5:,.0f}"]
+    "Indicator": [t['cost_kg'], t['margin_yr'], t['roi_ann'], t['payback_label'], t['poly_save'], t['extra_5y']],
+    "Standard": [f"{ckg_a:.3f}", f"{marg_a:,.0f}", f"{(marg_a/ca)*100:.1f}%", f"{pb_a:.2f}", "-", "-"],
+    "Premium": [f"{ckg_b:.3f}", f"{marg_b:,.0f}", f"{(marg_b/cp)*100:.1f}%", f"{pb_b:.2f}", f"{simbolo} {raw_a - raw_b:,.0f}", f"{simbolo} {(marg_b-marg_a)*5:,.0f}"]
 }
 if show_fusion:
-    fin_data["Fusion"] = [f"{ckg_c:.3f}", f"{marg_c:,.0f}", f"{(marg_c/cf)*100:.1f}%", f"{pb_c:.2f}", f"{(marg_c-marg_a)*5:,.0f}"]
+    # Per la Fusion il risparmio è massimizzato dal costo polimero ridotto inserito in sidebar
+    fin_data["Fusion"] = [f"{ckg_c:.3f}", f"{marg_c:,.0f}", f"{(marg_c/cf)*100:.1f}%", f"{pb_c:.2f}", f"{simbolo} {raw_a - raw_c:,.0f}", f"{simbolo} {(marg_c-marg_a)*5:,.0f}"]
 st.table(pd.DataFrame(fin_data))
 
 # --- 6. CHARTS ---
